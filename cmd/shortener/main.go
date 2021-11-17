@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-var baseUrl = "http://localhost:8080/"
+var baseURL = "http://localhost:8080/"
 
 type Sortener struct {
 	counter int64
@@ -32,8 +32,8 @@ func (s *Sortener) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if fullUrl, ok := s.shorts[id]; ok {
-		http.Redirect(w, r, fullUrl, http.StatusTemporaryRedirect)
+	if fullURL, ok := s.shorts[id]; ok {
+		http.Redirect(w, r, fullURL, http.StatusTemporaryRedirect)
 		return
 	}
 	http.Error(w, "Not found", http.StatusNotFound)
@@ -50,20 +50,20 @@ func (s *Sortener) handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fullUrl := string(body)
-	if _, err := url.ParseRequestURI(fullUrl); err != nil {
+	fullURL := string(body)
+	if _, err := url.ParseRequestURI(fullURL); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	id := s.nextShortUrl()
-	s.shorts[id] = fullUrl
+	id := s.nextShortURL()
+	s.shorts[id] = fullURL
 
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(baseUrl + id))
+	w.Write([]byte(baseURL + id))
 }
 
-func (s *Sortener) nextShortUrl() string {
+func (s *Sortener) nextShortURL() string {
 	str := strconv.FormatInt(s.counter, 36)
 	s.counter += 1
 	return str
