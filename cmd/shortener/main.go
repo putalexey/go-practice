@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -32,7 +31,7 @@ func (s *Sortener) handleGet(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
-	fmt.Println(s.shorts)
+
 	if fullUrl, ok := s.shorts[id]; ok {
 		http.Redirect(w, r, fullUrl, http.StatusTemporaryRedirect)
 		return
@@ -54,18 +53,19 @@ func (s *Sortener) handlePost(w http.ResponseWriter, r *http.Request) {
 	fullUrl := string(body)
 	if _, err := url.ParseRequestURI(fullUrl); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	id := s.nextShortUrl()
 	s.shorts[id] = fullUrl
 
-	fmt.Fprint(w, baseUrl+id)
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(baseUrl + id))
 }
 
 func (s *Sortener) nextShortUrl() string {
 	str := strconv.FormatInt(s.counter, 36)
 	s.counter += 1
-	fmt.Println(s.counter)
 	return str
 }
 
