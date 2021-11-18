@@ -2,6 +2,7 @@ package main
 
 import (
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -9,12 +10,12 @@ import (
 
 var baseURL = "http://localhost:8080/"
 
-type Sortener struct {
+type Shortener struct {
 	counter int64
 	shorts  map[string]string
 }
 
-func (s *Sortener) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *Shortener) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
 		s.handlePost(w, r)
@@ -25,7 +26,7 @@ func (s *Sortener) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Sortener) handleGet(w http.ResponseWriter, r *http.Request) {
+func (s *Shortener) handleGet(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Path[1:]
 	if id == "" {
 		http.Error(w, "Bad request", http.StatusBadRequest)
@@ -39,7 +40,7 @@ func (s *Sortener) handleGet(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Not found", http.StatusNotFound)
 }
 
-func (s *Sortener) handlePost(w http.ResponseWriter, r *http.Request) {
+func (s *Shortener) handlePost(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -57,21 +58,28 @@ func (s *Sortener) handlePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := s.nextShortURL()
-	s.shorts[id] = fullURL
+	s.setShort(id, fullURL)
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(baseURL + id))
 }
 
-func (s *Sortener) nextShortURL() string {
+func (s *Shortener) setShort(short, full string) {
+	if s.shorts == nil {
+		s.shorts = make(map[string]string)
+	}
+	s.shorts[short] = full
+}
+
+func (s *Shortener) nextShortURL() string {
 	str := strconv.FormatInt(s.counter, 36)
 	s.counter += 1
 	return str
 }
 
 func main() {
-	handler := &Sortener{0, make(map[string]string)}
+	handler := &Shortener{}
 
 	http.Handle("/", handler)
-	http.ListenAndServe(":8080", nil)
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
