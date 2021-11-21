@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"io"
 	"log"
 	"net/http"
@@ -11,23 +13,30 @@ import (
 var baseURL = "http://localhost:8080/"
 
 type Shortener struct {
+	*chi.Mux
 	counter int64
-	shorts  map[string]string
+	shorts  ShortsList
 }
 
-func (s *Shortener) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodPost:
-		s.handlePost(w, r)
-	case http.MethodGet:
-		s.handleGet(w, r)
-	default:
-		http.Error(w, "Bad request", http.StatusBadRequest)
+type ShortsList map[string]string
+
+func NewShortener(shorts ShortsList) *Shortener {
+	h := &Shortener{
+		Mux:    chi.NewMux(),
+		shorts: shorts,
 	}
+	h.Use(middleware.Logger)
+	h.Use(middleware.Recoverer)
+
+	h.Post("/", h.handlePost)
+	h.Get("/{id}", h.handleGet)
+
+	h.MethodNotAllowed(h.handleMethodNotAllowed)
+	return h
 }
 
 func (s *Shortener) handleGet(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[1:]
+	id := chi.URLParam(r, "id")
 	if id == "" {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
@@ -38,6 +47,10 @@ func (s *Shortener) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Error(w, "Not found", http.StatusNotFound)
+}
+
+func (s *Shortener) handleMethodNotAllowed(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Bad request", http.StatusBadRequest)
 }
 
 func (s *Shortener) handlePost(w http.ResponseWriter, r *http.Request) {
@@ -78,7 +91,7 @@ func (s *Shortener) nextShortURL() string {
 }
 
 func main() {
-	handler := &Shortener{}
+	handler := NewShortener(ShortsList{})
 
 	http.Handle("/", handler)
 	log.Fatal(http.ListenAndServe(":8080", nil))

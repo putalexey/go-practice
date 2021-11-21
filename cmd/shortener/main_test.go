@@ -23,7 +23,7 @@ func TestShortener(t *testing.T) {
 	tests := []struct {
 		name    string
 		request request
-		shorts  map[string]string
+		shorts  ShortsList
 		want    want
 	}{
 		{
@@ -53,7 +53,7 @@ func TestShortener(t *testing.T) {
 				method: http.MethodGet,
 				target: "/some",
 			},
-			shorts: map[string]string{"some": "http://test.example.com"},
+			shorts: ShortsList{"some": "http://test.example.com"},
 			want: want{
 				code:     http.StatusTemporaryRedirect,
 				response: "http://test.example.com",
@@ -99,9 +99,7 @@ func TestShortener(t *testing.T) {
 			request := httptest.NewRequest(tt.request.method, tt.request.target, requestBody)
 			w := httptest.NewRecorder()
 
-			s := &Shortener{
-				shorts: tt.shorts,
-			}
+			s := NewShortener(tt.shorts)
 			s.ServeHTTP(w, request)
 
 			result := w.Result()
@@ -112,8 +110,6 @@ func TestShortener(t *testing.T) {
 
 			err = result.Body.Close()
 			require.NoError(t, err)
-
-			t.Log(string(body), result.StatusCode)
 
 			if tt.want.response != "" {
 				assert.Contains(t, string(body), tt.want.response)
