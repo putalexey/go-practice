@@ -9,6 +9,6 @@ import (
 var domain = "localhost:8080"
 
 func main() {
-	handler := shortener.NewShortener(domain, nil)
-	log.Fatal(http.ListenAndServe(":8080", handler))
+	router := shortener.NewRouter(domain, nil)
+	log.Fatal(http.ListenAndServe(":8080", router))
 }

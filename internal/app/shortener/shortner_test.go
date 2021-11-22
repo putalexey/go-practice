@@ -100,7 +100,7 @@ func TestShortener(t *testing.T) {
 			request := httptest.NewRequest(tt.request.method, tt.request.target, requestBody)
 			w := httptest.NewRecorder()
 
-			s := NewShortener("localhost:8080", storage.NewMemoryStorage(tt.shorts))
+			s := NewRouter("localhost:8080", storage.NewMemoryStorage(tt.shorts))
 			s.ServeHTTP(w, request)
 
 			result := w.Result()

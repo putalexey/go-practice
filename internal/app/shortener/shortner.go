@@ -15,7 +15,7 @@ type Shortener struct {
 	storage storage.Storager
 }
 
-func NewShortener(domain string, store storage.Storager) *Shortener {
+func NewRouter(domain string, store storage.Storager) *Shortener {
 	if store == nil {
 		store = &storage.MemoryStorage{}
 	}
