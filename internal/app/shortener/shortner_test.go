@@ -1,4 +1,4 @@
-package main
+package shortener
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -99,7 +99,8 @@ func TestShortener(t *testing.T) {
 			request := httptest.NewRequest(tt.request.method, tt.request.target, requestBody)
 			w := httptest.NewRecorder()
 
-			s := NewShortener(tt.shorts)
+			s := NewShortener("localhost:8080")
+			s.shorts = tt.shorts
 			s.ServeHTTP(w, request)
 
 			result := w.Result()
