@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/putalexey/go-practicum/internal/app/storage"
 	"io"
 	"net/http"
 	"net/url"
@@ -14,23 +15,20 @@ type Shortener struct {
 	*chi.Mux
 	domain  string
 	counter int64
-	shorts  ShortsList
+	storage storage.Storager
 }
-
-type ShortsList map[string]string
 
 func NewShortener(domain string) *Shortener {
 	h := &Shortener{
-		Mux:    chi.NewMux(),
-		shorts: map[string]string{},
-		domain: domain,
+		Mux:     chi.NewMux(),
+		domain:  domain,
+		storage: &storage.MemoryStorage{},
 	}
 	h.Use(middleware.Logger)
 	h.Use(middleware.Recoverer)
 
 	h.Post("/", h.handlePost)
 	h.Get("/{id}", h.handleGet)
-
 	h.MethodNotAllowed(h.handleMethodNotAllowed)
 	return h
 }
@@ -42,7 +40,7 @@ func (s *Shortener) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if fullURL, ok := s.shorts[id]; ok {
+	if fullURL, err := s.storage.Load(id); err == nil {
 		http.Redirect(w, r, fullURL, http.StatusTemporaryRedirect)
 		return
 	}
@@ -70,19 +68,13 @@ func (s *Shortener) handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := s.nextShortURL()
-	s.setShort(id, fullURL)
+	short := s.nextShortURL()
+	if err := s.storage.Store(short, fullURL); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 
 	w.WriteHeader(http.StatusCreated)
-
-	_, _ = fmt.Fprintf(w, "http://%s/%s", s.domain, id)
-}
-
-func (s *Shortener) setShort(short, full string) {
-	if s.shorts == nil {
-		s.shorts = make(map[string]string)
-	}
-	s.shorts[short] = full
+	_, _ = fmt.Fprintf(w, "http://%s/%s", s.domain, short)
 }
 
 func (s *Shortener) nextShortURL() string {

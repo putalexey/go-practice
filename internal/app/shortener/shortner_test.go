@@ -1,6 +1,7 @@
 package shortener
 
 import (
+	"github.com/putalexey/go-practicum/internal/app/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -23,7 +24,7 @@ func TestShortener(t *testing.T) {
 	tests := []struct {
 		name    string
 		request request
-		shorts  ShortsList
+		shorts  map[string]string
 		want    want
 	}{
 		{
@@ -53,7 +54,7 @@ func TestShortener(t *testing.T) {
 				method: http.MethodGet,
 				target: "/some",
 			},
-			shorts: ShortsList{"some": "http://test.example.com"},
+			shorts: map[string]string{"some": "http://test.example.com"},
 			want: want{
 				code:     http.StatusTemporaryRedirect,
 				response: "http://test.example.com",
@@ -100,7 +101,7 @@ func TestShortener(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			s := NewShortener("localhost:8080")
-			s.shorts = tt.shorts
+			s.storage = storage.NewMemoryStorage(tt.shorts)
 			s.ServeHTTP(w, request)
 
 			result := w.Result()
