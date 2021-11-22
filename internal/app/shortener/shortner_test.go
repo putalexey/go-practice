@@ -118,3 +118,10 @@ func TestShortener(t *testing.T) {
 		})
 	}
 }
+
+func TestShortener_NewRouter(t *testing.T) {
+	t.Run("default router storage is MemoryStorage ", func(t *testing.T) {
+		s := NewRouter("localhost:8080", nil)
+		assert.IsType(t, &storage.MemoryStorage{}, s.storage)
+	})
+}

@@ -130,3 +130,25 @@ func TestMemoryStorage_Store(t *testing.T) {
 		})
 	}
 }
+
+func TestNewMemoryStorage(t *testing.T) {
+	type args struct {
+		records map[string]string
+	}
+	tests := []struct {
+		name string
+		args args
+		want *MemoryStorage
+	}{
+		{
+			name: "creates memory storage with filled records",
+			args: args{records: map[string]string{"key1": "value"}},
+			want: &MemoryStorage{records: map[string]string{"key1": "value"}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, NewMemoryStorage(tt.args.records), "NewMemoryStorage(%v)", tt.args.records)
+		})
+	}
+}
