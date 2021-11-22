@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"errors"
 	"fmt"
 )
 
@@ -25,12 +24,12 @@ func (s *MemoryStorage) Load(short string) (string, error) {
 	if full, ok := s.records[short]; ok {
 		return full, nil
 	}
-	return "", errors.New(fmt.Sprintf("record \"%s\" not found", short))
+	return "", fmt.Errorf("record \"%s\" not found", short)
 }
 
 func (s *MemoryStorage) Delete(short string) error {
 	if _, ok := s.records[short]; !ok {
-		return errors.New(fmt.Sprintf("record \"%s\" not found", short))
+		return fmt.Errorf("record \"%s\" not found", short)
 	}
 	delete(s.records, short)
 	return nil
