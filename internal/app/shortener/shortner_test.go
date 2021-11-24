@@ -1,6 +1,7 @@
-package main
+package shortener
 
 import (
+	"github.com/putalexey/go-practicum/internal/app/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -99,9 +100,7 @@ func TestShortener(t *testing.T) {
 			request := httptest.NewRequest(tt.request.method, tt.request.target, requestBody)
 			w := httptest.NewRecorder()
 
-			s := &Shortener{
-				shorts: tt.shorts,
-			}
+			s := NewRouter("localhost:8080", storage.NewMemoryStorage(tt.shorts))
 			s.ServeHTTP(w, request)
 
 			result := w.Result()
@@ -113,11 +112,16 @@ func TestShortener(t *testing.T) {
 			err = result.Body.Close()
 			require.NoError(t, err)
 
-			t.Log(string(body), result.StatusCode)
-
 			if tt.want.response != "" {
 				assert.Contains(t, string(body), tt.want.response)
 			}
 		})
 	}
+}
+
+func TestShortener_NewRouter(t *testing.T) {
+	t.Run("default router storage is MemoryStorage ", func(t *testing.T) {
+		s := NewRouter("localhost:8080", nil)
+		assert.IsType(t, &storage.MemoryStorage{}, s.storage)
+	})
 }
