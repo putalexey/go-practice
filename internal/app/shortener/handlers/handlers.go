@@ -29,6 +29,7 @@ func GetFullURLHandler(storage storage.Storager) http.HandlerFunc {
 func CreateFullURLHandler(generator urlgenerator.URLGenerator, storage storage.Storager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
+		defer r.Body.Close()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -50,7 +51,6 @@ func CreateFullURLHandler(generator urlgenerator.URLGenerator, storage storage.S
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		//_, _ = fmt.Fprintf(w, "http://%s/%s", domain, short)
 		_, _ = fmt.Fprint(w, generator.GetURL(short))
 	}
 }
