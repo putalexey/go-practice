@@ -1,6 +1,9 @@
 package shortener
 
 import (
+	"bytes"
+	"encoding/json"
+	"github.com/putalexey/go-practicum/internal/app/shortener/requests"
 	"github.com/putalexey/go-practicum/internal/app/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -11,7 +14,7 @@ import (
 	"testing"
 )
 
-func TestShortener(t *testing.T) {
+func TestShortener_Base(t *testing.T) {
 	type request struct {
 		method string
 		target string
@@ -43,6 +46,17 @@ func TestShortener(t *testing.T) {
 			request: request{
 				method: http.MethodPost,
 				target: "/",
+			},
+			want: want{
+				code: http.StatusBadRequest,
+			},
+		},
+		{
+			name: "post with error in url fails",
+			request: request{
+				method: http.MethodPost,
+				target: "/",
+				body:   "http//test.example.com",
 			},
 			want: want{
 				code: http.StatusBadRequest,
@@ -117,6 +131,125 @@ func TestShortener(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestShortener_JSONCreateFails(t *testing.T) {
+	type request struct {
+		method string
+		target string
+		body   string
+	}
+	type want struct {
+		code     int
+		response string
+	}
+	tests := []struct {
+		name    string
+		request request
+		shorts  map[string]string
+		want    want
+	}{
+		{
+			name: "post with empty body fails",
+			request: request{
+				method: http.MethodPost,
+				target: "/api/shorten",
+			},
+			want: want{
+				code: http.StatusBadRequest,
+			},
+		},
+		{
+			name: "post with wrong json fails",
+			request: request{
+				method: http.MethodPost,
+				target: "/api/shorten",
+				body:   "http://test.example.com",
+			},
+			want: want{
+				code: http.StatusBadRequest,
+			},
+		},
+		{
+			name: "post with error in url fails",
+			request: request{
+				method: http.MethodPost,
+				target: "/api/shorten",
+				body:   "{\"url\":\"http//test.example.com\"}",
+			},
+			want: want{
+				code: http.StatusBadRequest,
+			},
+		},
+		{
+			name: "returns 400 bad request on wrong method",
+			request: request{
+				method: http.MethodPatch,
+				target: "/api/shorten",
+			},
+			want: want{
+				code: http.StatusBadRequest,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requestBody io.Reader = nil
+			if tt.request.body != "" {
+				requestBody = strings.NewReader(tt.request.body)
+			}
+			request := httptest.NewRequest(tt.request.method, tt.request.target, requestBody)
+			w := httptest.NewRecorder()
+
+			s := NewRouter("localhost:8080", storage.NewMemoryStorage(tt.shorts))
+			s.ServeHTTP(w, request)
+
+			result := w.Result()
+			assert.Equal(t, tt.want.code, result.StatusCode)
+
+			body, err := io.ReadAll(result.Body)
+			require.NoError(t, err)
+
+			err = result.Body.Close()
+			require.NoError(t, err)
+
+			if tt.want.response != "" {
+				assert.Contains(t, string(body), tt.want.response)
+			}
+		})
+	}
+}
+
+func TestShortener_JSONCreates(t *testing.T) {
+	t.Run("Creates short url", func(t *testing.T) {
+		var requestBody io.Reader = nil
+		body, err := json.Marshal(requests.CreateShortRequest{URL: "http://test.example.com"})
+		require.NoError(t, err)
+
+		requestBody = bytes.NewReader(body)
+		request := httptest.NewRequest(http.MethodPost, "/api/shorten", requestBody)
+		w := httptest.NewRecorder()
+
+		s := NewRouter("localhost:8080", nil)
+		s.ServeHTTP(w, request)
+
+		result := w.Result()
+		assert.Equal(t, http.StatusCreated, result.StatusCode)
+
+		responseBody, err := io.ReadAll(result.Body)
+		require.NoError(t, err)
+
+		err = result.Body.Close()
+		require.NoError(t, err)
+
+		response := struct {
+			Result string `json:"result"`
+		}{}
+		err = json.Unmarshal(responseBody, &response)
+		assert.NoError(t, err)
+
+		assert.NotEmpty(t, response.Result)
+	})
 }
 
 func TestShortener_NewRouter(t *testing.T) {
