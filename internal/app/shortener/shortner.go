@@ -15,16 +15,15 @@ type Shortener struct {
 	storage storage.Storager
 }
 
-func NewRouter(domain string, store storage.Storager) *Shortener {
+func NewRouter(baseURL string, store storage.Storager) *Shortener {
 	if store == nil {
 		store = &storage.MemoryStorage{}
 	}
 	h := &Shortener{
 		Mux:     chi.NewMux(),
-		domain:  domain,
 		storage: store,
 	}
-	urlGenerator := &urlgenerator.SequenceGenerator{Domain: domain}
+	urlGenerator := &urlgenerator.SequenceGenerator{BaseURL: baseURL}
 
 	h.Use(middleware.Logger)
 	h.Use(middleware.Recoverer)

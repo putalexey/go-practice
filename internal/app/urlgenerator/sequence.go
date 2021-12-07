@@ -6,7 +6,7 @@ import (
 )
 
 type SequenceGenerator struct {
-	Domain  string
+	BaseURL string
 	counter int64
 }
 
@@ -17,5 +17,5 @@ func (g *SequenceGenerator) GenerateShort(_ string) string {
 }
 
 func (g *SequenceGenerator) GetURL(short string) string {
-	return fmt.Sprintf("http://%s/%s", g.Domain, short)
+	return fmt.Sprintf("%s/%s", g.BaseURL, short)
 }

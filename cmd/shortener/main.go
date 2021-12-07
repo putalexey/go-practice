@@ -1,14 +1,27 @@
 package main
 
 import (
+	"github.com/caarlos0/env/v6"
 	"github.com/putalexey/go-practicum/internal/app/shortener"
 	"log"
 	"net/http"
 )
 
-var domain = "localhost:8080"
+type EnvConfig struct {
+	Address string `env:"SERVER_ADDRESS"`
+	BaseURL string `env:"BASE_URL"`
+}
 
 func main() {
-	router := shortener.NewRouter(domain, nil)
-	log.Fatal(http.ListenAndServe(":8080", router))
+	cfg := EnvConfig{
+		Address: ":8080",
+		BaseURL: "http://localhost:8080",
+	}
+	err := env.Parse(&cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	router := shortener.NewRouter(cfg.BaseURL, nil)
+	log.Fatal(http.ListenAndServe(cfg.Address, router))
 }
