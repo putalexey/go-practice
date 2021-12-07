@@ -89,7 +89,7 @@ func JSONCreateShort(generator urlgenerator.URLGenerator, storage storage.Storag
 			return
 		}
 
-		createResponse := responses.CreateShortResponse{Result: short}
+		createResponse := responses.CreateShortResponse{Result: generator.GetURL(short)}
 		data, err := json.Marshal(createResponse)
 		if err != nil {
 			jsonError(w, err.Error(), http.StatusInternalServerError)
