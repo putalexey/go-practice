@@ -3,14 +3,15 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/putalexey/go-practicum/internal/app/shortener/requests"
 	"github.com/putalexey/go-practicum/internal/app/shortener/responses"
 	"github.com/putalexey/go-practicum/internal/app/storage"
 	"github.com/putalexey/go-practicum/internal/app/urlgenerator"
-	"io"
-	"net/http"
-	"net/url"
 )
 
 func GetFullURLHandler(storage storage.Storager) http.HandlerFunc {
@@ -98,7 +99,10 @@ func JSONCreateShort(generator urlgenerator.URLGenerator, storage storage.Storag
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write(data)
+		_, err = w.Write(data)
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -108,14 +112,17 @@ func BadRequestHandler() http.HandlerFunc {
 	}
 }
 
-func jsonError(w http.ResponseWriter, error string, code int) {
-	_err := responses.ErrorResponse{Error: error}
-	response, err := json.Marshal(_err)
+func jsonError(w http.ResponseWriter, errMessage string, code int) {
+	response := responses.ErrorResponse{Error: errMessage}
+	data, err := json.Marshal(response)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	_, _ = w.Write(response)
+	_, err = w.Write(data)
+	if err != nil {
+		panic(err)
+	}
 }

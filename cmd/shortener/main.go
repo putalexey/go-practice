@@ -2,11 +2,12 @@ package main
 
 import (
 	"flag"
+	"log"
+	"net/http"
+
 	"github.com/caarlos0/env/v6"
 	"github.com/putalexey/go-practicum/internal/app/shortener"
 	"github.com/putalexey/go-practicum/internal/app/storage"
-	"log"
-	"net/http"
 )
 
 type EnvConfig struct {
@@ -23,7 +24,7 @@ func main() {
 	}
 	err := env.Parse(&cfg)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	parseFlags(&cfg)
