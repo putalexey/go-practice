@@ -30,6 +30,10 @@ func NewRouter(baseURL string, store storage.Storager) *Shortener {
 	h.Use(middleware.Recoverer)
 	h.Use(appMiddleware.GZipDecoder)
 	h.Use(appMiddleware.GZipEncoder)
+	h.Use(appMiddleware.AuthCookie(
+		"auth",
+		"NYiB6/ekacuT53BtdFB2ael09T8vyrnUGbi3NTeedL3tMQy4NpixN9mUzXNod9PH9EVEshAcnSFjgi+QiykVHT0j",
+	))
 
 	h.Post("/", handlers.CreateFullURLHandler(urlGenerator, store))
 	h.Get("/{id}", handlers.GetFullURLHandler(store))
