@@ -14,7 +14,7 @@ func resetFileContents(t *testing.T, tempfilepath string) {
 	require.NoError(t, err)
 }
 
-var testData = []byte("{\"short\":\"test\",\"full\":\"http://example.com/testme\"}")
+var testData = []byte("{\"short\":\"test\",\"full\":\"http://example.com/testme\",\"user_id\":\"testUser\"}")
 
 func TestFileStorage(t *testing.T) {
 	var err error
@@ -43,7 +43,7 @@ func TestFileStorage(t *testing.T) {
 		store, err := NewFileStorage(tempfilepath)
 		require.NoError(t, err)
 
-		err = store.Store("test2", "http://afawef.com/yteyj")
+		err = store.Store("test2", "http://afawef.com/yteyj", "testUser")
 		require.NoError(t, err)
 
 		fileData, err := os.ReadFile(tempfilepath)
@@ -56,7 +56,7 @@ func TestFileStorage(t *testing.T) {
 		store, err := NewFileStorage(tempfilepath)
 		require.NoError(t, err)
 
-		err = store.Store("test2", "http://afawef.com/yteyj")
+		err = store.Store("test2", "http://afawef.com/yteyj", "testUser")
 		require.NoError(t, err)
 
 		store, err = NewFileStorage(tempfilepath)
@@ -80,7 +80,7 @@ func TestFileStorage(t *testing.T) {
 		store = FileStorage{
 			filepath: tempfilepath,
 		}
-		err = store.Store("test2", "http://afawef.com/zxcv")
+		err = store.Store("test2", "http://afawef.com/zxcv", "testUser")
 		require.NoError(t, err)
 
 		ret, err = store.Load("test")
@@ -109,6 +109,52 @@ func TestFileStorage(t *testing.T) {
 		require.Error(t, err)
 	})
 
+	t.Run("return user's shorts", func(t *testing.T) {
+		resetFileContents(t, tempfilepath)
+		store, err := NewFileStorage(tempfilepath)
+		require.NoError(t, err)
+
+		records, err := store.LoadForUser("testUser")
+		assert.NoError(t, err)
+		assert.Len(t, records, 1)
+
+		err = store.Store("test2", "http://example.com/testme2", "testUser")
+		assert.NoError(t, err)
+
+		records, err = store.LoadForUser("testUser")
+		require.NoError(t, err)
+		assert.Len(t, records, 2)
+	})
+
+	t.Run("not return other user's shorts", func(t *testing.T) {
+		resetFileContents(t, tempfilepath)
+		store, err := NewFileStorage(tempfilepath)
+		require.NoError(t, err)
+		err = store.Store("test2", "http://example.com/testme2", "testUser2")
+		assert.NoError(t, err)
+		err = store.Store("test3", "http://example.com/testme3", "testUser2")
+		assert.NoError(t, err)
+
+		records, err := store.LoadForUser("testUser")
+		assert.NoError(t, err)
+		assert.Len(t, records, 1)
+
+		records, err = store.LoadForUser("testUser2")
+		assert.NoError(t, err)
+		assert.Len(t, records, 2)
+	})
+
+	t.Run("return empty list when user doesn't have shorts", func(t *testing.T) {
+		resetFileContents(t, tempfilepath)
+		store, err := NewFileStorage(tempfilepath)
+		require.NoError(t, err)
+
+		records, err := store.LoadForUser("testUser2")
+		assert.NoError(t, err)
+		assert.NotNil(t, records)
+		assert.Len(t, records, 0)
+	})
+
 	err = os.WriteFile(tempfilepath, []byte("{\"short\":\"asd\",\"full\":\"http://example.com/tes"), 0666)
 	require.NoError(t, err)
 	t.Run("returns errors when fails to read file", func(t *testing.T) {
@@ -126,7 +172,7 @@ func TestFileStorage(t *testing.T) {
 		store = &FileStorage{
 			filepath: tempfilepath,
 		}
-		err = store.Store("test2", "http://afawef.com/zxcv")
+		err = store.Store("test2", "http://afawef.com/zxcv", "testUser")
 		assert.Error(t, err)
 	})
 }

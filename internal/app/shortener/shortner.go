@@ -38,6 +38,7 @@ func NewRouter(baseURL string, store storage.Storager) *Shortener {
 	h.Post("/", handlers.CreateFullURLHandler(urlGenerator, store))
 	h.Get("/{id}", handlers.GetFullURLHandler(store))
 	h.Post("/api/shorten", handlers.JSONCreateShort(urlGenerator, store))
+	h.Get("/user/urls", handlers.JSONGetShortsForCurrentUser(urlGenerator, store))
 	h.MethodNotAllowed(handlers.BadRequestHandler())
 
 	return h

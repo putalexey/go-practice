@@ -7,20 +7,16 @@ import (
 	"os"
 )
 
-type Record struct {
-	Short string `json:"short"`
-	Full  string `json:"full"`
-}
-type recordMap map[string]Record
+var _ Storager = &FileStorage{}
 
 type FileStorage struct {
-	records  recordMap
+	records  RecordMap
 	filepath string
 }
 
 func NewFileStorage(filepath string) (*FileStorage, error) {
 	storage := &FileStorage{
-		records:  make(recordMap),
+		records:  make(RecordMap),
 		filepath: filepath,
 	}
 	if err := storage.restore(); err != nil {
@@ -37,7 +33,7 @@ func (s *FileStorage) restore() error {
 	defer file.Close()
 
 	if s.records == nil {
-		s.records = make(recordMap)
+		s.records = make(RecordMap)
 	}
 	decoder := json.NewDecoder(file)
 	for {
@@ -52,14 +48,13 @@ func (s *FileStorage) restore() error {
 	return nil
 }
 
-func (s *FileStorage) Store(short, full string) error {
+func (s *FileStorage) Store(short, full, userID string) error {
 	if s.records == nil {
 		if err := s.restore(); err != nil {
 			return err
 		}
 	}
-
-	s.records[short] = Record{Short: short, Full: full}
+	s.records[short] = Record{Short: short, Full: full, UserID: userID}
 	return s.saveToFile()
 }
 
@@ -74,6 +69,23 @@ func (s *FileStorage) Load(short string) (string, error) {
 		return record.Full, nil
 	}
 	return "", fmt.Errorf("record \"%s\" not found", short)
+}
+
+func (s *FileStorage) LoadForUser(userID string) ([]Record, error) {
+	if s.records == nil {
+		if err := s.restore(); err != nil {
+			return nil, err
+		}
+	}
+
+	recordList := make([]Record, 0)
+	for _, record := range s.records {
+		if record.UserID == userID {
+			recordList = append(recordList, record)
+		}
+	}
+
+	return recordList, nil
 }
 
 func (s *FileStorage) Delete(short string) error {

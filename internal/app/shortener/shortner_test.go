@@ -27,7 +27,7 @@ func TestShortener_Base(t *testing.T) {
 	tests := []struct {
 		name    string
 		request request
-		shorts  map[string]string
+		shorts  storage.RecordMap
 		want    want
 	}{
 		{
@@ -68,7 +68,7 @@ func TestShortener_Base(t *testing.T) {
 				method: http.MethodGet,
 				target: "/some",
 			},
-			shorts: map[string]string{"some": "http://test.example.com"},
+			shorts: storage.RecordMap{"some": {Short: "some", Full: "http://test.example.com", UserID: "test"}},
 			want: want{
 				code:     http.StatusTemporaryRedirect,
 				response: "http://test.example.com",
@@ -146,7 +146,7 @@ func TestShortener_JSONCreateFails(t *testing.T) {
 	tests := []struct {
 		name    string
 		request request
-		shorts  map[string]string
+		shorts  storage.RecordMap
 		want    want
 	}{
 		{

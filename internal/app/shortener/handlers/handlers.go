@@ -2,8 +2,11 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/putalexey/go-practicum/internal/app/middleware"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 
@@ -43,6 +46,12 @@ func CreateFullURLHandler(generator urlgenerator.URLGenerator, storage storage.S
 			return
 		}
 
+		userID, err := getUserIDFromRequest(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		fullURL := string(body)
 		if _, err := url.ParseRequestURI(fullURL); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -50,7 +59,7 @@ func CreateFullURLHandler(generator urlgenerator.URLGenerator, storage storage.S
 		}
 
 		short := generator.GenerateShort(fullURL)
-		if err := storage.Store(short, fullURL); err != nil {
+		if err := storage.Store(short, fullURL, userID); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -63,13 +72,18 @@ func JSONCreateShort(generator urlgenerator.URLGenerator, storage storage.Storag
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		defer r.Body.Close()
-
 		if err != nil {
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		if len(body) == 0 {
 			jsonError(w, "Empty request", http.StatusBadRequest)
+			return
+		}
+
+		userID, err := getUserIDFromRequest(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -85,7 +99,7 @@ func JSONCreateShort(generator urlgenerator.URLGenerator, storage storage.Storag
 		}
 
 		short := generator.GenerateShort(createRequest.URL)
-		if err := storage.Store(short, createRequest.URL); err != nil {
+		if err := storage.Store(short, createRequest.URL, userID); err != nil {
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -99,6 +113,48 @@ func JSONCreateShort(generator urlgenerator.URLGenerator, storage storage.Storag
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
+		_, err = w.Write(data)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
+func JSONGetShortsForCurrentUser(generator urlgenerator.URLGenerator, storage storage.Storager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := getUserIDFromRequest(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		recordsList, err := storage.LoadForUser(userID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if len(recordsList) == 0 {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		log.Println(userID, recordsList)
+
+		listResponse := make(responses.ListShortsResponse, len(recordsList))
+		i := 0
+		for _, record := range recordsList {
+			listResponse[i] = responses.ListShortItem{
+				ShortURL:    generator.GetURL(record.Short),
+				OriginalURL: record.Full,
+			}
+			i++
+		}
+		data, err := json.Marshal(listResponse)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
 		_, err = w.Write(data)
 		if err != nil {
 			panic(err)
@@ -125,4 +181,12 @@ func jsonError(w http.ResponseWriter, errMessage string, code int) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func getUserIDFromRequest(r *http.Request) (string, error) {
+	userID, ok := r.Context().Value(middleware.UIDKey).(string)
+	if !ok || userID == "" {
+		return "", errors.New("user id is not initialized")
+	}
+	return userID, nil
 }
