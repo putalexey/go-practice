@@ -46,3 +46,7 @@ func (s *MemoryStorage) Delete(short string) error {
 	delete(s.records, short)
 	return nil
 }
+
+func (s *MemoryStorage) Ping() error {
+	return nil
+}

@@ -14,6 +14,7 @@ type EnvConfig struct {
 	Address         string `env:"SERVER_ADDRESS"`
 	BaseURL         string `env:"BASE_URL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+	DatabaseDSN     string `env:"DATABASE_DSN"`
 }
 
 func main() {
@@ -21,6 +22,7 @@ func main() {
 		Address:         ":8080",
 		BaseURL:         "http://localhost:8080",
 		FileStoragePath: "",
+		DatabaseDSN:     "",
 	}
 	err := env.Parse(&cfg)
 	if err != nil {
@@ -35,6 +37,11 @@ func main() {
 			log.Fatal(err)
 		}
 	}
+	if cfg.DatabaseDSN != "" {
+		if store, err = storage.NewDBStorage(cfg.DatabaseDSN); err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	router := shortener.NewRouter(cfg.BaseURL, store)
 	log.Fatal(http.ListenAndServe(cfg.Address, router))
@@ -44,6 +51,7 @@ func parseFlags(cfg *EnvConfig) {
 	addressFlag := flag.String("a", "", "Адрес запуска HTTP-сервера")
 	baseURLFlag := flag.String("b", "", "Базовый адрес результирующего сокращённого URL")
 	fileStoragePathFlag := flag.String("f", "", "Путь до файла с сокращёнными URL")
+	databaseDSNFlag := flag.String("d", "", "Адрес подключения к БД")
 	flag.Parse()
 
 	if *addressFlag != "" {
@@ -54,5 +62,8 @@ func parseFlags(cfg *EnvConfig) {
 	}
 	if *fileStoragePathFlag != "" {
 		cfg.FileStoragePath = *fileStoragePathFlag
+	}
+	if *databaseDSNFlag != "" {
+		cfg.DatabaseDSN = *databaseDSNFlag
 	}
 }

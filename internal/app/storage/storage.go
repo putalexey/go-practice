@@ -13,4 +13,5 @@ type Storager interface {
 	Load(short string) (string, error)
 	LoadForUser(userID string) ([]Record, error)
 	Delete(short string) error
+	Ping() error
 }

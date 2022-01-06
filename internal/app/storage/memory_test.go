@@ -134,15 +134,8 @@ func TestMemoryStorage_Store(t *testing.T) {
 		})
 	}
 
-	defaultRecords := RecordMap{
-		"test": Record{
-			Short:  "test",
-			Full:   "http://example.com/testme",
-			UserID: "testUser",
-		},
-	}
 	t.Run("return user's shorts", func(t *testing.T) {
-		store := &MemoryStorage{records: defaultRecords}
+		store := &MemoryStorage{records: defaultRecords()}
 
 		records, err := store.LoadForUser("testUser")
 		assert.NoError(t, err)
@@ -157,7 +150,7 @@ func TestMemoryStorage_Store(t *testing.T) {
 	})
 
 	t.Run("not return other user's shorts", func(t *testing.T) {
-		store := &MemoryStorage{records: defaultRecords}
+		store := &MemoryStorage{records: defaultRecords()}
 		err := store.Store("test2", "http://example.com/testme2", "testUser2")
 		assert.NoError(t, err)
 		err = store.Store("test3", "http://example.com/testme3", "testUser2")
@@ -173,14 +166,24 @@ func TestMemoryStorage_Store(t *testing.T) {
 	})
 
 	t.Run("return empty list when user doesn't have shorts", func(t *testing.T) {
-		store := &MemoryStorage{records: defaultRecords}
+		store := &MemoryStorage{records: defaultRecords()}
 
-		records, err := store.LoadForUser("testUser2")
+		records, err := store.LoadForUser("testUser_not_exists")
 		assert.NoError(t, err)
 		assert.NotNil(t, records)
 		assert.Len(t, records, 0)
 	})
 
+}
+
+func defaultRecords() RecordMap {
+	return RecordMap{
+		"test": Record{
+			Short:  "test",
+			Full:   "http://example.com/testme",
+			UserID: "testUser",
+		},
+	}
 }
 
 func TestNewMemoryStorage(t *testing.T) {

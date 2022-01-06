@@ -17,6 +17,20 @@ import (
 	"github.com/putalexey/go-practicum/internal/app/urlgenerator"
 )
 
+func PingHandler(storage storage.Storager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := storage.Ping()
+		if err != nil {
+			http.Error(w, "DB unavalable", http.StatusInternalServerError)
+			return
+		}
+		_, err = w.Write([]byte("OK"))
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
 func GetFullURLHandler(storage storage.Storager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")

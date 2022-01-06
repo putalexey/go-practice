@@ -36,6 +36,7 @@ func NewRouter(baseURL string, store storage.Storager) *Shortener {
 	))
 
 	h.Post("/", handlers.CreateFullURLHandler(urlGenerator, store))
+	h.Get("/ping", handlers.PingHandler(store))
 	h.Get("/{id}", handlers.GetFullURLHandler(store))
 	h.Post("/api/shorten", handlers.JSONCreateShort(urlGenerator, store))
 	h.Get("/user/urls", handlers.JSONGetShortsForCurrentUser(urlGenerator, store))

@@ -96,6 +96,10 @@ func (s *FileStorage) Delete(short string) error {
 	return s.saveToFile()
 }
 
+func (s *FileStorage) Ping() error {
+	return nil
+}
+
 func (s *FileStorage) saveToFile() error {
 	file, err := os.Create(s.filepath)
 	if err != nil {
