@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -48,30 +49,30 @@ func (s *FileStorage) restore() error {
 	return nil
 }
 
-func (s *FileStorage) Store(short, full, userID string) error {
+func (s *FileStorage) Store(_ context.Context, record Record) error {
 	if s.records == nil {
 		if err := s.restore(); err != nil {
 			return err
 		}
 	}
-	s.records[short] = Record{Short: short, Full: full, UserID: userID}
+	s.records[record.Short] = record //Record{Short: short, Full: full, UserID: userID}
 	return s.saveToFile()
 }
 
-func (s *FileStorage) Load(short string) (string, error) {
+func (s *FileStorage) Load(_ context.Context, short string) (Record, error) {
 	if s.records == nil {
 		if err := s.restore(); err != nil {
-			return "", err
+			return Record{}, err
 		}
 	}
 
 	if record, ok := s.records[short]; ok {
-		return record.Full, nil
+		return record, nil
 	}
-	return "", fmt.Errorf("record \"%s\" not found", short)
+	return Record{}, fmt.Errorf("record \"%s\" not found", short)
 }
 
-func (s *FileStorage) LoadForUser(userID string) ([]Record, error) {
+func (s *FileStorage) LoadForUser(_ context.Context, userID string) ([]Record, error) {
 	if s.records == nil {
 		if err := s.restore(); err != nil {
 			return nil, err
@@ -88,7 +89,7 @@ func (s *FileStorage) LoadForUser(userID string) ([]Record, error) {
 	return recordList, nil
 }
 
-func (s *FileStorage) Delete(short string) error {
+func (s *FileStorage) Delete(_ context.Context, short string) error {
 	if _, ok := s.records[short]; !ok {
 		return fmt.Errorf("record \"%s\" not found", short)
 	}
@@ -96,7 +97,7 @@ func (s *FileStorage) Delete(short string) error {
 	return s.saveToFile()
 }
 
-func (s *FileStorage) Ping() error {
+func (s *FileStorage) Ping(_ context.Context) error {
 	return nil
 }
 

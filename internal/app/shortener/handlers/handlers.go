@@ -19,7 +19,7 @@ import (
 
 func PingHandler(storage storage.Storager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		err := storage.Ping()
+		err := storage.Ping(r.Context())
 		if err != nil {
 			http.Error(w, "DB unavalable", http.StatusInternalServerError)
 			return
@@ -39,15 +39,15 @@ func GetFullURLHandler(storage storage.Storager) http.HandlerFunc {
 			return
 		}
 
-		if fullURL, err := storage.Load(id); err == nil {
-			http.Redirect(w, r, fullURL, http.StatusTemporaryRedirect)
+		if record, err := storage.Load(r.Context(), id); err == nil {
+			http.Redirect(w, r, record.Full, http.StatusTemporaryRedirect)
 			return
 		}
 		http.Error(w, "Not found", http.StatusNotFound)
 	}
 }
 
-func CreateFullURLHandler(generator urlgenerator.URLGenerator, storage storage.Storager) http.HandlerFunc {
+func CreateFullURLHandler(generator urlgenerator.URLGenerator, store storage.Storager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		defer r.Body.Close()
@@ -72,17 +72,23 @@ func CreateFullURLHandler(generator urlgenerator.URLGenerator, storage storage.S
 			return
 		}
 
-		short := generator.GenerateShort(fullURL)
-		if err := storage.Store(short, fullURL, userID); err != nil {
+		//short := generator.GenerateShort(fullURL)
+		short, err := storage.NewRecord(fullURL, userID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if err := store.Store(r.Context(), short); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		_, _ = fmt.Fprint(w, generator.GetURL(short))
+		_, _ = fmt.Fprint(w, generator.GetURL(short.Short))
 	}
 }
 
-func JSONCreateShort(generator urlgenerator.URLGenerator, storage storage.Storager) http.HandlerFunc {
+func JSONCreateShort(generator urlgenerator.URLGenerator, store storage.Storager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		defer r.Body.Close()
@@ -112,13 +118,18 @@ func JSONCreateShort(generator urlgenerator.URLGenerator, storage storage.Storag
 			return
 		}
 
-		short := generator.GenerateShort(createRequest.URL)
-		if err := storage.Store(short, createRequest.URL, userID); err != nil {
+		short, err := storage.NewRecord(createRequest.URL, userID)
+		if err != nil {
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		createResponse := responses.CreateShortResponse{Result: generator.GetURL(short)}
+		if err := store.Store(r.Context(), short); err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		createResponse := responses.CreateShortResponse{Result: generator.GetURL(short.Short)}
 		data, err := json.Marshal(createResponse)
 		if err != nil {
 			jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -142,7 +153,7 @@ func JSONGetShortsForCurrentUser(generator urlgenerator.URLGenerator, storage st
 			return
 		}
 
-		recordsList, err := storage.LoadForUser(userID)
+		recordsList, err := storage.LoadForUser(r.Context(), userID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

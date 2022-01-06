@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"math/rand"
@@ -17,6 +18,7 @@ func resetFileContents(t *testing.T, tempfilepath string) {
 var testData = []byte("{\"short\":\"test\",\"full\":\"http://example.com/testme\",\"user_id\":\"testUser\"}")
 
 func TestFileStorage(t *testing.T) {
+	ctx := context.Background()
 	var err error
 	tempfilepath := GetFilePath()
 	defer os.Remove(tempfilepath)
@@ -33,9 +35,9 @@ func TestFileStorage(t *testing.T) {
 		store, err := NewFileStorage(tempfilepath)
 		require.NoError(t, err)
 
-		ret, err := store.Load("test")
+		ret, err := store.Load(ctx, "test")
 		require.NoError(t, err)
-		assert.Equal(t, "http://example.com/testme", ret)
+		assert.Equal(t, "http://example.com/testme", ret.Full)
 	})
 
 	t.Run("adds records to file", func(t *testing.T) {
@@ -43,7 +45,10 @@ func TestFileStorage(t *testing.T) {
 		store, err := NewFileStorage(tempfilepath)
 		require.NoError(t, err)
 
-		err = store.Store("test2", "http://afawef.com/yteyj", "testUser")
+		r, err := NewRecord("http://afawef.com/yteyj", "testUser")
+		require.NoError(t, err)
+
+		err = store.Store(ctx, r)
 		require.NoError(t, err)
 
 		fileData, err := os.ReadFile(tempfilepath)
@@ -56,16 +61,19 @@ func TestFileStorage(t *testing.T) {
 		store, err := NewFileStorage(tempfilepath)
 		require.NoError(t, err)
 
-		err = store.Store("test2", "http://afawef.com/yteyj", "testUser")
+		r, err := NewRecord("http://afawef.com/yteyj", "testUser")
+		require.NoError(t, err)
+
+		err = store.Store(ctx, r)
 		require.NoError(t, err)
 
 		store, err = NewFileStorage(tempfilepath)
 		require.NoError(t, err)
 
-		ret, err := store.Load("test2")
+		ret, err := store.Load(ctx, r.Short)
 		require.NoError(t, err)
 
-		assert.Equal(t, "http://afawef.com/yteyj", ret)
+		assert.Equal(t, "http://afawef.com/yteyj", ret.Full)
 	})
 
 	t.Run("restores file before operations, when created not with NewFileStorage", func(t *testing.T) {
@@ -73,19 +81,23 @@ func TestFileStorage(t *testing.T) {
 		store := FileStorage{
 			filepath: tempfilepath,
 		}
-		ret, err := store.Load("test")
+		ret, err := store.Load(ctx, "test")
 		require.NoError(t, err)
-		assert.Equal(t, "http://example.com/testme", ret)
+		assert.Equal(t, "http://example.com/testme", ret.Full)
 
 		store = FileStorage{
 			filepath: tempfilepath,
 		}
-		err = store.Store("test2", "http://afawef.com/zxcv", "testUser")
+
+		r, err := NewRecord("http://afawef.com/yteyj", "testUser")
 		require.NoError(t, err)
 
-		ret, err = store.Load("test")
+		err = store.Store(ctx, r)
 		require.NoError(t, err)
-		assert.Equal(t, "http://example.com/testme", ret)
+
+		ret, err = store.Load(ctx, "test")
+		require.NoError(t, err)
+		assert.Equal(t, "http://example.com/testme", ret.Full)
 	})
 
 	t.Run("deletes data", func(t *testing.T) {
@@ -93,10 +105,10 @@ func TestFileStorage(t *testing.T) {
 		store, err := NewFileStorage(tempfilepath)
 		require.NoError(t, err)
 
-		err = store.Delete("test")
+		err = store.Delete(ctx, "test")
 		require.NoError(t, err)
 
-		_, err = store.Load("test")
+		_, err = store.Load(ctx, "test")
 		assert.Error(t, err)
 	})
 
@@ -105,7 +117,7 @@ func TestFileStorage(t *testing.T) {
 		store, err := NewFileStorage(tempfilepath)
 		require.NoError(t, err)
 
-		err = store.Delete("test123")
+		err = store.Delete(ctx, "test123")
 		require.Error(t, err)
 	})
 
@@ -114,14 +126,17 @@ func TestFileStorage(t *testing.T) {
 		store, err := NewFileStorage(tempfilepath)
 		require.NoError(t, err)
 
-		records, err := store.LoadForUser("testUser")
+		records, err := store.LoadForUser(ctx, "testUser")
 		assert.NoError(t, err)
 		assert.Len(t, records, 1)
 
-		err = store.Store("test2", "http://example.com/testme2", "testUser")
+		r, err := NewRecord("http://example.com/testme2", "testUser")
+		require.NoError(t, err)
+
+		err = store.Store(ctx, r)
 		assert.NoError(t, err)
 
-		records, err = store.LoadForUser("testUser")
+		records, err = store.LoadForUser(ctx, "testUser")
 		require.NoError(t, err)
 		assert.Len(t, records, 2)
 	})
@@ -130,16 +145,24 @@ func TestFileStorage(t *testing.T) {
 		resetFileContents(t, tempfilepath)
 		store, err := NewFileStorage(tempfilepath)
 		require.NoError(t, err)
-		err = store.Store("test2", "http://example.com/testme2", "testUser2")
-		assert.NoError(t, err)
-		err = store.Store("test3", "http://example.com/testme3", "testUser2")
+
+		r1, err := NewRecord("http://example.com/testme2", "testUser2")
+		require.NoError(t, err)
+
+		err = store.Store(ctx, r1)
 		assert.NoError(t, err)
 
-		records, err := store.LoadForUser("testUser")
+		r2, err := NewRecord("http://example.com/testme3", "testUser2")
+		require.NoError(t, err)
+
+		err = store.Store(ctx, r2)
+		assert.NoError(t, err)
+
+		records, err := store.LoadForUser(ctx, "testUser")
 		assert.NoError(t, err)
 		assert.Len(t, records, 1)
 
-		records, err = store.LoadForUser("testUser2")
+		records, err = store.LoadForUser(ctx, "testUser2")
 		assert.NoError(t, err)
 		assert.Len(t, records, 2)
 	})
@@ -149,7 +172,7 @@ func TestFileStorage(t *testing.T) {
 		store, err := NewFileStorage(tempfilepath)
 		require.NoError(t, err)
 
-		records, err := store.LoadForUser("testUser2")
+		records, err := store.LoadForUser(ctx, "testUser2")
 		assert.NoError(t, err)
 		assert.NotNil(t, records)
 		assert.Len(t, records, 0)
@@ -165,14 +188,17 @@ func TestFileStorage(t *testing.T) {
 		store = &FileStorage{
 			filepath: tempfilepath,
 		}
-		ret, err := store.Load("test")
+		_, err = store.Load(ctx, "test")
 		assert.Error(t, err)
-		assert.Empty(t, ret)
 
 		store = &FileStorage{
 			filepath: tempfilepath,
 		}
-		err = store.Store("test2", "http://afawef.com/zxcv", "testUser")
+
+		r, err := NewRecord("http://afawef.com/zxcv", "testUser")
+		require.NoError(t, err)
+
+		err = store.Store(ctx, r)
 		assert.Error(t, err)
 	})
 }

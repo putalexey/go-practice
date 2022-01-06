@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	_ "github.com/jackc/pgx/stdlib"
+	"github.com/pressly/goose/v3"
 	"time"
 )
 
@@ -15,7 +16,7 @@ type DBStorage struct {
 	db *sql.DB
 }
 
-func NewDBStorage(databaseDSN string) (*DBStorage, error) {
+func NewDBStorage(databaseDSN, migrationsDir string) (*DBStorage, error) {
 	db, err := sql.Open("pgx", databaseDSN)
 	if err != nil {
 		return nil, err
@@ -27,14 +28,24 @@ func NewDBStorage(databaseDSN string) (*DBStorage, error) {
 		},
 		db: db,
 	}
+
+	//migrate
+	if migrationsDir != "" {
+		err := goose.Up(db, migrationsDir)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return storage, nil
 }
 
-//func (s *DBStorage) Store(short, full, userID string) error {
+//func (s *DBStorage) Store(_ context.Context, record Record) error {
 //	//s.db.Exec("INSERT INTO {}")
 //	//s.records[short] = Record{Short: short, Full: full, UserID: userID}
 //	return nil
 //}
+
 //
 //func (s *DBStorage) Load(short string) (string, error) {
 //	//if record, ok := s.records[short]; ok {
@@ -62,13 +73,8 @@ func NewDBStorage(databaseDSN string) (*DBStorage, error) {
 //	return nil
 //}
 
-func (s *DBStorage) Ping() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+func (s *DBStorage) Ping(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
-
-	if err := s.db.PingContext(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return s.db.PingContext(ctx)
 }

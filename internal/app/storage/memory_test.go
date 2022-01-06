@@ -1,12 +1,14 @@
 package storage
 
 import (
+	"context"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestMemoryStorage_Delete(t *testing.T) {
+	ctx := context.Background()
 	tests := []struct {
 		name    string
 		records RecordMap
@@ -38,7 +40,7 @@ func TestMemoryStorage_Delete(t *testing.T) {
 				records: tt.records,
 			}
 
-			if err := s.Delete(tt.short); (err != nil) != tt.wantErr {
+			if err := s.Delete(ctx, tt.short); (err != nil) != tt.wantErr {
 				t.Errorf("Delete() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -46,6 +48,7 @@ func TestMemoryStorage_Delete(t *testing.T) {
 }
 
 func TestMemoryStorage_Load(t *testing.T) {
+	ctx := context.Background()
 	tests := []struct {
 		name    string
 		records RecordMap
@@ -79,17 +82,18 @@ func TestMemoryStorage_Load(t *testing.T) {
 			s := &MemoryStorage{
 				records: tt.records,
 			}
-			got, err := s.Load(tt.short)
+			got, err := s.Load(ctx, tt.short)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Load() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.want, got.Full)
 		})
 	}
 }
 
 func TestMemoryStorage_Store(t *testing.T) {
+	ctx := context.Background()
 	type args struct {
 		short  string
 		full   string
@@ -127,7 +131,10 @@ func TestMemoryStorage_Store(t *testing.T) {
 			s := &MemoryStorage{
 				records: tt.records,
 			}
-			if err := s.Store(tt.args.short, tt.args.full, tt.args.userID); (err != nil) != tt.wantErr {
+			r, err := NewRecord(tt.args.full, tt.args.userID)
+			require.NoError(t, err)
+
+			if err := s.Store(ctx, r); (err != nil) != tt.wantErr {
 				t.Errorf("Store() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
@@ -137,30 +144,30 @@ func TestMemoryStorage_Store(t *testing.T) {
 	t.Run("return user's shorts", func(t *testing.T) {
 		store := &MemoryStorage{records: defaultRecords()}
 
-		records, err := store.LoadForUser("testUser")
+		records, err := store.LoadForUser(ctx, "testUser")
 		assert.NoError(t, err)
 		assert.Len(t, records, 1)
 
-		err = store.Store("test2", "http://example.com/testme2", "testUser")
+		err = store.Store(ctx, Record{"test2", "http://example.com/testme2", "testUser"})
 		assert.NoError(t, err)
 
-		records, err = store.LoadForUser("testUser")
+		records, err = store.LoadForUser(ctx, "testUser")
 		assert.NoError(t, err)
 		assert.Len(t, records, 2)
 	})
 
 	t.Run("not return other user's shorts", func(t *testing.T) {
 		store := &MemoryStorage{records: defaultRecords()}
-		err := store.Store("test2", "http://example.com/testme2", "testUser2")
+		err := store.Store(ctx, Record{"test2", "http://example.com/testme2", "testUser2"})
 		assert.NoError(t, err)
-		err = store.Store("test3", "http://example.com/testme3", "testUser2")
+		err = store.Store(ctx, Record{"test3", "http://example.com/testme3", "testUser2"})
 		assert.NoError(t, err)
 
-		records, err := store.LoadForUser("testUser")
+		records, err := store.LoadForUser(ctx, "testUser")
 		assert.NoError(t, err)
 		assert.Len(t, records, 1)
 
-		records, err = store.LoadForUser("testUser2")
+		records, err = store.LoadForUser(ctx, "testUser2")
 		require.NoError(t, err)
 		assert.Len(t, records, 2)
 	})
@@ -168,7 +175,7 @@ func TestMemoryStorage_Store(t *testing.T) {
 	t.Run("return empty list when user doesn't have shorts", func(t *testing.T) {
 		store := &MemoryStorage{records: defaultRecords()}
 
-		records, err := store.LoadForUser("testUser_not_exists")
+		records, err := store.LoadForUser(ctx, "testUser_not_exists")
 		assert.NoError(t, err)
 		assert.NotNil(t, records)
 		assert.Len(t, records, 0)

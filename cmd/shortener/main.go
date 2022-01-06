@@ -38,7 +38,7 @@ func main() {
 		}
 	}
 	if cfg.DatabaseDSN != "" {
-		if store, err = storage.NewDBStorage(cfg.DatabaseDSN); err != nil {
+		if store, err = storage.NewDBStorage(cfg.DatabaseDSN, "migrations"); err != nil {
 			log.Fatal(err)
 		}
 	}
