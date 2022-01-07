@@ -29,6 +29,7 @@ type RecordMap map[string]Record
 
 type Storager interface {
 	Store(ctx context.Context, r Record) error
+	StoreBatch(ctx context.Context, records []Record) error
 	Load(ctx context.Context, short string) (Record, error)
 	LoadForUser(ctx context.Context, userID string) ([]Record, error)
 	Delete(ctx context.Context, short string) error

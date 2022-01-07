@@ -11,6 +11,13 @@ type ListShortItem struct {
 
 type ListShortsResponse []ListShortItem
 
+type CreateShortBatchResponse []CreateShortBatchResponseItem
+
+type CreateShortBatchResponseItem struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
+}
+
 type ErrorResponse struct {
 	Error string `json:"error"`
 }

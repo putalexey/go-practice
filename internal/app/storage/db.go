@@ -13,6 +13,7 @@ var _ Storager = &DBStorage{}
 
 var recordsTableName = "shorts"
 var queryTimeout = 5 * time.Second
+var batchQueryTimeout = 30 * time.Second
 
 type DBStorage struct {
 	db *sql.DB
@@ -24,9 +25,12 @@ func NewDBStorage(databaseDSN, migrationsDir string) (*DBStorage, error) {
 		return nil, err
 	}
 
-	storage := &DBStorage{
-		db: db,
-	}
+	db.SetMaxOpenConns(20)
+	db.SetMaxIdleConns(20)
+	db.SetConnMaxIdleTime(30 * time.Second)
+	db.SetConnMaxLifetime(2 * time.Minute)
+
+	storage := &DBStorage{db}
 
 	//migrate
 	if migrationsDir != "" {
@@ -49,6 +53,32 @@ func (s *DBStorage) Store(ctx context.Context, record Record) error {
 		return err
 	}
 	return nil
+}
+
+func (s *DBStorage) StoreBatch(ctx context.Context, records []Record) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	insertSQL := fmt.Sprintf(`INSERT INTO %s ("short", "original", "user_id") VALUES ($1, $2, $3)`, recordsTableName)
+	insertStmt, err := s.db.Prepare(insertSQL)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, batchQueryTimeout)
+	defer cancel()
+
+	for _, record := range records {
+		_, err := insertStmt.ExecContext(ctx, record.Short, record.Full, record.UserID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func (s *DBStorage) Load(ctx context.Context, short string) (Record, error) {

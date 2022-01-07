@@ -55,7 +55,19 @@ func (s *FileStorage) Store(_ context.Context, record Record) error {
 			return err
 		}
 	}
-	s.records[record.Short] = record //Record{Short: short, Full: full, UserID: userID}
+	s.records[record.Short] = record
+	return s.saveToFile()
+}
+
+func (s *FileStorage) StoreBatch(_ context.Context, records []Record) error {
+	if s.records == nil {
+		if err := s.restore(); err != nil {
+			return err
+		}
+	}
+	for _, record := range records {
+		s.records[record.Short] = record
+	}
 	return s.saveToFile()
 }
 

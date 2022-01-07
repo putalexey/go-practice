@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/putalexey/go-practicum/internal/app/shortener/requests"
@@ -67,8 +69,8 @@ func CreateFullURLHandler(generator urlgenerator.URLGenerator, store storage.Sto
 		}
 
 		fullURL := string(body)
-		if _, err := url.ParseRequestURI(fullURL); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		if !isValidURL(fullURL) {
+			http.Error(w, invalidURLError(fullURL), http.StatusBadRequest)
 			return
 		}
 
@@ -113,8 +115,8 @@ func JSONCreateShort(generator urlgenerator.URLGenerator, store storage.Storager
 			return
 		}
 
-		if _, err := url.ParseRequestURI(createRequest.URL); err != nil {
-			jsonError(w, err.Error(), http.StatusBadRequest)
+		if !isValidURL(createRequest.URL) {
+			jsonError(w, invalidURLError(createRequest.URL), http.StatusBadRequest)
 			return
 		}
 
@@ -143,6 +145,97 @@ func JSONCreateShort(generator urlgenerator.URLGenerator, store storage.Storager
 			panic(err)
 		}
 	}
+}
+
+func JSONCreateShortBatch(generator urlgenerator.URLGenerator, store storage.Storager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		defer r.Body.Close()
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if len(body) == 0 {
+			jsonError(w, "Empty request", http.StatusBadRequest)
+			return
+		}
+
+		userID, err := getUserIDFromRequest(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		batch := requests.CreateShortBatchRequest{}
+		if err = json.Unmarshal(body, &batch); err != nil {
+			jsonError(w, "Request can't be parsed", http.StatusBadRequest)
+			return
+		}
+
+		if err := checkBachURLs(batch); err != nil {
+			jsonError(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), time.Minute)
+		defer cancel()
+
+		response := responses.CreateShortBatchResponse{}
+		batchInserter := storage.NewBatchInserter(store, 10)
+		for _, item := range batch {
+			if !isValidURL(item.OriginalURL) {
+				jsonError(w, invalidURLError(item.OriginalURL), http.StatusBadRequest)
+				return
+			}
+
+			r, err := storage.NewRecord(item.OriginalURL, userID)
+			if err != nil {
+				jsonError(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			if err := batchInserter.AddItem(ctx, r); err != nil {
+				jsonError(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			responseItem := responses.CreateShortBatchResponseItem{
+				CorrelationID: item.CorrelationID,
+				ShortURL:      generator.GetURL(r.Short),
+			}
+			response = append(response, responseItem)
+		}
+
+		if err := batchInserter.Flush(ctx); err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		data, err := json.Marshal(response)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, err = w.Write(data)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+func isValidURL(uri string) bool {
+	_, err := url.ParseRequestURI(uri)
+	return err == nil
+}
+func checkBachURLs(batch requests.CreateShortBatchRequest) error {
+	for _, item := range batch {
+		if _, err := url.ParseRequestURI(item.OriginalURL); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func JSONGetShortsForCurrentUser(generator urlgenerator.URLGenerator, storage storage.Storager) http.HandlerFunc {
@@ -214,4 +307,8 @@ func getUserIDFromRequest(r *http.Request) (string, error) {
 		return "", errors.New("user id is not initialized")
 	}
 	return userID, nil
+}
+
+func invalidURLError(uri string) string {
+	return fmt.Sprintf("invalid url: %s", uri)
 }

@@ -23,6 +23,17 @@ func (s *MemoryStorage) Store(_ context.Context, record Record) error {
 	return nil
 }
 
+func (s *MemoryStorage) StoreBatch(_ context.Context, records []Record) error {
+	if s.records == nil {
+		s.records = make(RecordMap)
+	}
+
+	for _, record := range records {
+		s.records[record.Short] = record
+	}
+	return nil
+}
+
 func (s *MemoryStorage) Load(_ context.Context, short string) (Record, error) {
 	if r, ok := s.records[short]; ok {
 		return r, nil
