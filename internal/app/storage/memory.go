@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"fmt"
 )
 
 var _ Storager = &MemoryStorage{}
@@ -38,7 +37,7 @@ func (s *MemoryStorage) Load(_ context.Context, short string) (Record, error) {
 	if r, ok := s.records[short]; ok {
 		return r, nil
 	}
-	return Record{}, fmt.Errorf("record \"%s\" not found", short)
+	return Record{}, RecordNotFound(short)
 }
 
 func (s *MemoryStorage) LoadForUser(_ context.Context, userID string) ([]Record, error) {
@@ -53,7 +52,7 @@ func (s *MemoryStorage) LoadForUser(_ context.Context, userID string) ([]Record,
 
 func (s *MemoryStorage) Delete(_ context.Context, short string) error {
 	if _, ok := s.records[short]; !ok {
-		return fmt.Errorf("record \"%s\" not found", short)
+		return RecordNotFound(short)
 	}
 	delete(s.records, short)
 	return nil

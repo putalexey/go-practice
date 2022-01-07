@@ -3,7 +3,7 @@ package storage
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 	"os"
 )
@@ -39,7 +39,7 @@ func (s *FileStorage) restore() error {
 	decoder := json.NewDecoder(file)
 	for {
 		var record Record
-		if err := decoder.Decode(&record); err == io.EOF {
+		if err := decoder.Decode(&record); errors.Is(err, io.EOF) {
 			break
 		} else if err != nil {
 			return err
@@ -81,7 +81,7 @@ func (s *FileStorage) Load(_ context.Context, short string) (Record, error) {
 	if record, ok := s.records[short]; ok {
 		return record, nil
 	}
-	return Record{}, fmt.Errorf("record \"%s\" not found", short)
+	return Record{}, RecordNotFound(short)
 }
 
 func (s *FileStorage) LoadForUser(_ context.Context, userID string) ([]Record, error) {
@@ -103,7 +103,7 @@ func (s *FileStorage) LoadForUser(_ context.Context, userID string) ([]Record, e
 
 func (s *FileStorage) Delete(_ context.Context, short string) error {
 	if _, ok := s.records[short]; !ok {
-		return fmt.Errorf("record \"%s\" not found", short)
+		return RecordNotFound(short)
 	}
 	delete(s.records, short)
 	return s.saveToFile()

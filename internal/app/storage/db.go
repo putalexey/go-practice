@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	_ "github.com/jackc/pgx/stdlib"
 	"github.com/pressly/goose/v3"
@@ -90,8 +91,8 @@ func (s *DBStorage) Load(ctx context.Context, short string) (Record, error) {
 	row := s.db.QueryRowContext(ctx, selectSQL, short)
 	err := row.Scan(&r.Short, &r.Full, &r.UserID)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return Record{}, fmt.Errorf("record \"%s\" not found: %w", short, err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return Record{}, RecordNotFound(short)
 		}
 		return Record{}, err
 	}
