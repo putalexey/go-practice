@@ -37,7 +37,7 @@ func (s *MemoryStorage) Load(_ context.Context, short string) (Record, error) {
 	if r, ok := s.records[short]; ok {
 		return r, nil
 	}
-	return Record{}, RecordNotFound(short)
+	return Record{}, NewRecordNotFoundError(short)
 }
 
 func (s *MemoryStorage) LoadForUser(_ context.Context, userID string) ([]Record, error) {
@@ -52,7 +52,7 @@ func (s *MemoryStorage) LoadForUser(_ context.Context, userID string) ([]Record,
 
 func (s *MemoryStorage) Delete(_ context.Context, short string) error {
 	if _, ok := s.records[short]; !ok {
-		return RecordNotFound(short)
+		return NewRecordNotFoundError(short)
 	}
 	delete(s.records, short)
 	return nil

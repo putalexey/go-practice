@@ -23,11 +23,13 @@ func PingHandler(storage storage.Storager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := storage.Ping(r.Context())
 		if err != nil {
+			log.Println("ERROR: DB unavalable:", err)
 			http.Error(w, "DB unavalable", http.StatusInternalServerError)
 			return
 		}
 		_, err = w.Write([]byte("OK"))
 		if err != nil {
+			log.Println("ERROR:", err)
 			panic(err)
 		}
 	}
@@ -51,6 +53,7 @@ func GetFullURLHandler(storage storage.Storager) http.HandlerFunc {
 
 func CreateFullURLHandler(generator urlgenerator.URLGenerator, store storage.Storager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		responseStatus := http.StatusCreated
 		body, err := io.ReadAll(r.Body)
 		defer r.Body.Close()
 		if err != nil {
@@ -81,20 +84,30 @@ func CreateFullURLHandler(generator urlgenerator.URLGenerator, store storage.Sto
 			return
 		}
 
-		if err := store.Store(r.Context(), short); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		err = store.Store(r.Context(), short)
+		if err != nil {
+			var conflictError *storage.RecordConflictError
+			if errors.As(err, &conflictError) {
+				responseStatus = http.StatusConflict
+				short = conflictError.OldRecord
+			} else {
+				jsonError(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
 
-		w.WriteHeader(http.StatusCreated)
+		w.WriteHeader(responseStatus)
 		_, _ = fmt.Fprint(w, generator.GetURL(short.Short))
 	}
 }
 
 func JSONCreateShort(generator urlgenerator.URLGenerator, store storage.Storager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		responseStatus := http.StatusCreated
 		body, err := io.ReadAll(r.Body)
 		defer r.Body.Close()
 		if err != nil {
+			log.Println("ERROR:", err)
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -105,6 +118,7 @@ func JSONCreateShort(generator urlgenerator.URLGenerator, store storage.Storager
 
 		userID, err := getUserIDFromRequest(r)
 		if err != nil {
+			log.Println("ERROR:", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -122,26 +136,37 @@ func JSONCreateShort(generator urlgenerator.URLGenerator, store storage.Storager
 
 		short, err := storage.NewRecord(createRequest.URL, userID)
 		if err != nil {
+			log.Println("ERROR:", err)
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		if err := store.Store(r.Context(), short); err != nil {
-			jsonError(w, err.Error(), http.StatusInternalServerError)
-			return
+		err = store.Store(r.Context(), short)
+		if err != nil {
+			var conflictError *storage.RecordConflictError
+			if errors.As(err, &conflictError) {
+				responseStatus = http.StatusConflict
+				short = conflictError.OldRecord
+			} else {
+				log.Println("ERROR:", err)
+				jsonError(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
 
 		createResponse := responses.CreateShortResponse{Result: generator.GetURL(short.Short)}
 		data, err := json.Marshal(createResponse)
 		if err != nil {
+			log.Println("ERROR:", err)
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
+		w.WriteHeader(responseStatus)
 		_, err = w.Write(data)
 		if err != nil {
+			log.Println("ERROR:", err)
 			panic(err)
 		}
 	}
@@ -152,6 +177,7 @@ func JSONCreateShortBatch(generator urlgenerator.URLGenerator, store storage.Sto
 		body, err := io.ReadAll(r.Body)
 		defer r.Body.Close()
 		if err != nil {
+			log.Println("ERROR:", err)
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -162,6 +188,7 @@ func JSONCreateShortBatch(generator urlgenerator.URLGenerator, store storage.Sto
 
 		userID, err := getUserIDFromRequest(r)
 		if err != nil {
+			log.Println("ERROR:", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -169,11 +196,6 @@ func JSONCreateShortBatch(generator urlgenerator.URLGenerator, store storage.Sto
 		batch := requests.CreateShortBatchRequest{}
 		if err = json.Unmarshal(body, &batch); err != nil {
 			jsonError(w, "Request can't be parsed", http.StatusBadRequest)
-			return
-		}
-
-		if err := checkBachURLs(batch); err != nil {
-			jsonError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
@@ -190,11 +212,13 @@ func JSONCreateShortBatch(generator urlgenerator.URLGenerator, store storage.Sto
 
 			r, err := storage.NewRecord(item.OriginalURL, userID)
 			if err != nil {
+				log.Println("ERROR:", err)
 				jsonError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
 			if err := batchInserter.AddItem(ctx, r); err != nil {
+				log.Println("ERROR:", err)
 				jsonError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -207,12 +231,14 @@ func JSONCreateShortBatch(generator urlgenerator.URLGenerator, store storage.Sto
 		}
 
 		if err := batchInserter.Flush(ctx); err != nil {
+			log.Println("ERROR:", err)
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		data, err := json.Marshal(response)
 		if err != nil {
+			log.Println("ERROR:", err)
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -221,6 +247,7 @@ func JSONCreateShortBatch(generator urlgenerator.URLGenerator, store storage.Sto
 		w.WriteHeader(http.StatusCreated)
 		_, err = w.Write(data)
 		if err != nil {
+			log.Println("ERROR:", err)
 			panic(err)
 		}
 	}
@@ -229,25 +256,19 @@ func isValidURL(uri string) bool {
 	_, err := url.ParseRequestURI(uri)
 	return err == nil
 }
-func checkBachURLs(batch requests.CreateShortBatchRequest) error {
-	for _, item := range batch {
-		if _, err := url.ParseRequestURI(item.OriginalURL); err != nil {
-			return err
-		}
-	}
-	return nil
-}
 
 func JSONGetShortsForCurrentUser(generator urlgenerator.URLGenerator, storage storage.Storager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := getUserIDFromRequest(r)
 		if err != nil {
+			log.Println("ERROR:", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		recordsList, err := storage.LoadForUser(r.Context(), userID)
 		if err != nil {
+			log.Println("ERROR:", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -255,7 +276,6 @@ func JSONGetShortsForCurrentUser(generator urlgenerator.URLGenerator, storage st
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-		log.Println(userID, recordsList)
 
 		listResponse := make(responses.ListShortsResponse, len(recordsList))
 		i := 0
@@ -268,6 +288,7 @@ func JSONGetShortsForCurrentUser(generator urlgenerator.URLGenerator, storage st
 		}
 		data, err := json.Marshal(listResponse)
 		if err != nil {
+			log.Println("ERROR:", err)
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -275,6 +296,7 @@ func JSONGetShortsForCurrentUser(generator urlgenerator.URLGenerator, storage st
 		w.Header().Set("Content-Type", "application/json")
 		_, err = w.Write(data)
 		if err != nil {
+			log.Println("ERROR:", err)
 			panic(err)
 		}
 	}

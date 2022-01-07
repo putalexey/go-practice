@@ -81,7 +81,7 @@ func (s *FileStorage) Load(_ context.Context, short string) (Record, error) {
 	if record, ok := s.records[short]; ok {
 		return record, nil
 	}
-	return Record{}, RecordNotFound(short)
+	return Record{}, NewRecordNotFoundError(short)
 }
 
 func (s *FileStorage) LoadForUser(_ context.Context, userID string) ([]Record, error) {
@@ -103,7 +103,7 @@ func (s *FileStorage) LoadForUser(_ context.Context, userID string) ([]Record, e
 
 func (s *FileStorage) Delete(_ context.Context, short string) error {
 	if _, ok := s.records[short]; !ok {
-		return RecordNotFound(short)
+		return NewRecordNotFoundError(short)
 	}
 	delete(s.records, short)
 	return s.saveToFile()

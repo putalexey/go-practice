@@ -18,6 +18,8 @@ type EnvConfig struct {
 }
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
 	cfg := EnvConfig{
 		Address:         ":8080",
 		BaseURL:         "http://localhost:8080",

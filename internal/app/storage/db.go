@@ -7,6 +7,7 @@ import (
 	"fmt"
 	_ "github.com/jackc/pgx/stdlib"
 	"github.com/pressly/goose/v3"
+	"log"
 	"time"
 )
 
@@ -48,10 +49,32 @@ func (s *DBStorage) Store(ctx context.Context, record Record) error {
 	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()
 
-	insertSQL := fmt.Sprintf(`INSERT INTO %s ("short", "original", "user_id") VALUES ($1, $2, $3)`, recordsTableName)
-	_, err := s.db.ExecContext(ctx, insertSQL, record.Short, record.Full, record.UserID)
+	insertSQL := fmt.Sprintf(`INSERT INTO
+		%s ("short", "original", "user_id") VALUES ($1, $2, $3)
+		ON CONFLICT DO NOTHING`, recordsTableName)
+	res, err := s.db.ExecContext(ctx, insertSQL, record.Short, record.Full, record.UserID)
 	if err != nil {
+		log.Println(err)
 		return err
+	}
+
+	insertedRows, err := res.RowsAffected()
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	if insertedRows == 0 {
+		var oldRecord Record
+		// nothing inserted get conflicted row
+		selectSQL := fmt.Sprintf(`SELECT "short", "original", "user_id"
+		FROM %s WHERE "original" = $1`, recordsTableName)
+		row := s.db.QueryRowContext(ctx, selectSQL, record.Full)
+		err := row.Scan(&oldRecord.Short, &oldRecord.Full, &oldRecord.UserID)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		return NewRecordConflictError(oldRecord)
 	}
 	return nil
 }
@@ -92,7 +115,7 @@ func (s *DBStorage) Load(ctx context.Context, short string) (Record, error) {
 	err := row.Scan(&r.Short, &r.Full, &r.UserID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return Record{}, RecordNotFound(short)
+			return Record{}, NewRecordNotFoundError(short)
 		}
 		return Record{}, err
 	}

@@ -5,7 +5,7 @@ create table if not exists shorts (
   original varchar(2048),
   user_id varchar(255)
 );
-create index if not exists user_id_idx ON shorts (user_id);
+create index if not exists shorts_user_id_idx ON shorts (user_id);
 -- +goose StatementEnd
 
 -- +goose Down
