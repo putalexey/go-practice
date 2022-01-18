@@ -1,36 +1,63 @@
 package storage
 
 import (
-	"fmt"
+	"context"
 )
 
+var _ Storager = &MemoryStorage{}
+
 type MemoryStorage struct {
-	records map[string]string
+	records RecordMap
 }
 
-func NewMemoryStorage(records map[string]string) *MemoryStorage {
+func NewMemoryStorage(records RecordMap) *MemoryStorage {
 	return &MemoryStorage{records: records}
 }
 
-func (s *MemoryStorage) Store(short, full string) error {
+func (s *MemoryStorage) Store(_ context.Context, record Record) error {
 	if s.records == nil {
-		s.records = make(map[string]string)
+		s.records = make(RecordMap)
 	}
-	s.records[short] = full
+	s.records[record.Short] = record //Record{Short: short, Full: full, UserID: userID}
 	return nil
 }
 
-func (s *MemoryStorage) Load(short string) (string, error) {
-	if full, ok := s.records[short]; ok {
-		return full, nil
+func (s *MemoryStorage) StoreBatch(_ context.Context, records []Record) error {
+	if s.records == nil {
+		s.records = make(RecordMap)
 	}
-	return "", fmt.Errorf("record \"%s\" not found", short)
+
+	for _, record := range records {
+		s.records[record.Short] = record
+	}
+	return nil
 }
 
-func (s *MemoryStorage) Delete(short string) error {
+func (s *MemoryStorage) Load(_ context.Context, short string) (Record, error) {
+	if r, ok := s.records[short]; ok {
+		return r, nil
+	}
+	return Record{}, NewRecordNotFoundError(short)
+}
+
+func (s *MemoryStorage) LoadForUser(_ context.Context, userID string) ([]Record, error) {
+	recordsList := make([]Record, 0)
+	for _, record := range s.records {
+		if record.UserID == userID {
+			recordsList = append(recordsList, record)
+		}
+	}
+	return recordsList, nil
+}
+
+func (s *MemoryStorage) Delete(_ context.Context, short string) error {
 	if _, ok := s.records[short]; !ok {
-		return fmt.Errorf("record \"%s\" not found", short)
+		return NewRecordNotFoundError(short)
 	}
 	delete(s.records, short)
+	return nil
+}
+
+func (s *MemoryStorage) Ping(_ context.Context) error {
 	return nil
 }
