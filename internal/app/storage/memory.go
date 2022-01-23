@@ -40,6 +40,18 @@ func (s *MemoryStorage) Load(_ context.Context, short string) (Record, error) {
 	return Record{}, NewRecordNotFoundError(short)
 }
 
+func (s *MemoryStorage) LoadBatch(_ context.Context, shorts []string) ([]Record, error) {
+	recordsList := make([]Record, 0)
+	for _, short := range shorts {
+		r, ok := s.records[short]
+		if !ok {
+			return nil, NewRecordNotFoundError(short)
+		}
+		recordsList = append(recordsList, r)
+	}
+	return recordsList, nil
+}
+
 func (s *MemoryStorage) LoadForUser(_ context.Context, userID string) ([]Record, error) {
 	recordsList := make([]Record, 0)
 	for _, record := range s.records {
@@ -58,15 +70,11 @@ func (s *MemoryStorage) Delete(_ context.Context, short string) error {
 	return nil
 }
 
-func (s *MemoryStorage) DeleteBatchForUser(_ context.Context, shorts []string, userID string) error {
+func (s *MemoryStorage) DeleteBatch(ctx context.Context, shorts []string) error {
 	// check all shorts exists
 	for _, short := range shorts {
-		v, ok := s.records[short]
-		if !ok {
+		if _, ok := s.records[short]; !ok {
 			return NewRecordNotFoundError(short)
-		}
-		if v.UserID != userID {
-			return ErrAccessDenied
 		}
 	}
 	// delete them

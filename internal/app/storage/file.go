@@ -84,6 +84,24 @@ func (s *FileStorage) Load(_ context.Context, short string) (Record, error) {
 	return Record{}, NewRecordNotFoundError(short)
 }
 
+func (s *FileStorage) LoadBatch(_ context.Context, shorts []string) ([]Record, error) {
+	if s.records == nil {
+		if err := s.restore(); err != nil {
+			return nil, err
+		}
+	}
+
+	recordsList := make([]Record, 0)
+	for _, short := range shorts {
+		r, ok := s.records[short]
+		if !ok {
+			return nil, NewRecordNotFoundError(short)
+		}
+		recordsList = append(recordsList, r)
+	}
+	return recordsList, nil
+}
+
 func (s *FileStorage) LoadForUser(_ context.Context, userID string) ([]Record, error) {
 	if s.records == nil {
 		if err := s.restore(); err != nil {
@@ -109,16 +127,12 @@ func (s *FileStorage) Delete(_ context.Context, short string) error {
 	return s.saveToFile()
 }
 
-func (s *FileStorage) DeleteBatchForUser(_ context.Context, shorts []string, userID string) error {
+func (s *FileStorage) DeleteBatch(ctx context.Context, shorts []string) error {
 	// check all shorts exists
 	filteredShorts := make([]string, 0, len(shorts))
 	for _, short := range shorts {
-		v, ok := s.records[short]
-		if !ok {
+		if _, ok := s.records[short]; !ok {
 			return NewRecordNotFoundError(short)
-		}
-		if v.UserID != userID {
-			return ErrAccessDenied
 		}
 	}
 	// delete them

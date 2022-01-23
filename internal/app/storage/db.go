@@ -125,6 +125,36 @@ func (s *DBStorage) Load(ctx context.Context, short string) (Record, error) {
 	return r, nil
 }
 
+func (s *DBStorage) LoadBatch(ctx context.Context, shorts []string) ([]Record, error) {
+	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
+	defer cancel()
+
+	shortsPlaceholderList, args := prepareSQLPlaceholders(1, shorts)
+	shortsPlaceholderCommaList := strings.Join(shortsPlaceholderList, ",")
+
+	recordList := make([]Record, 0)
+	selectSQL := fmt.Sprintf("SELECT short, original, user_id, deleted from %s WHERE short in (%s) and deleted = FALSE", recordsTableName, shortsPlaceholderCommaList)
+	rows, err := s.db.QueryContext(ctx, selectSQL, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		var r Record
+		err := rows.Scan(&r.Short, &r.Full, &r.UserID, &r.Deleted)
+		if err != nil {
+			return nil, err
+		}
+		recordList = append(recordList, r)
+	}
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return recordList, nil
+}
+
 func (s *DBStorage) LoadForUser(ctx context.Context, userID string) ([]Record, error) {
 	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()
@@ -161,7 +191,7 @@ func (s *DBStorage) Delete(ctx context.Context, short string) error {
 	return err
 }
 
-func (s *DBStorage) DeleteBatchForUser(ctx context.Context, shorts []string, userID string) error {
+func (s *DBStorage) DeleteBatch(ctx context.Context, shorts []string) error {
 	if len(shorts) == 0 {
 		return nil
 	}
@@ -169,21 +199,9 @@ func (s *DBStorage) DeleteBatchForUser(ctx context.Context, shorts []string, use
 	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()
 
-	pIndex := 1
-	args := make([]interface{}, 1, len(shorts)+1)
-	args[0] = userID
-	pIndex++
-
-	shortsPlaceholderList := make([]string, 0, len(shorts))
-	for _, short := range shorts {
-		//shortsPlaceholderList[i] = "$" + strconv.Itoa(pIndex)
-		shortsPlaceholderList = append(shortsPlaceholderList, "$"+strconv.Itoa(pIndex))
-		args = append(args, short)
-		pIndex++
-	}
-
+	shortsPlaceholderList, args := prepareSQLPlaceholders(1, shorts)
 	shortsPlaceholderCommaList := strings.Join(shortsPlaceholderList, ",")
-	updateSQL := fmt.Sprintf("UPDATE %s SET deleted = TRUE WHERE user_id = $1 and short IN (%s)", recordsTableName, shortsPlaceholderCommaList)
+	updateSQL := fmt.Sprintf("UPDATE %s SET deleted = TRUE WHERE short IN (%s)", recordsTableName, shortsPlaceholderCommaList)
 	_, err := s.db.ExecContext(ctx, updateSQL, args...)
 	return err
 }
@@ -192,4 +210,18 @@ func (s *DBStorage) Ping(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()
 	return s.db.PingContext(ctx)
+}
+
+func prepareSQLPlaceholders(startIndex int, values []string) ([]string, []interface{}) {
+	pIndex := startIndex
+	args := make([]interface{}, 0, len(values))
+
+	shortsPlaceholderList := make([]string, 0, len(values))
+	for _, short := range values {
+		shortsPlaceholderList = append(shortsPlaceholderList, "$"+strconv.Itoa(pIndex))
+		args = append(args, short)
+		pIndex++
+	}
+
+	return shortsPlaceholderList, args
 }

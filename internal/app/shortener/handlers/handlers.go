@@ -337,7 +337,20 @@ func JSONDeleteUserShorts(store storage.Storager) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(r.Context(), time.Second)
 		defer cancel()
 
-		if err = store.DeleteBatchForUser(ctx, shorts, userID); err != nil {
+		// check does all shorts exists and belongs to current user
+		records, err := store.LoadBatch(ctx, shorts)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		for _, r := range records {
+			if r.UserID != userID {
+				jsonError(w, "you can't delete item: "+r.Short, http.StatusForbidden)
+				return
+			}
+		}
+
+		if err = store.DeleteBatch(ctx, shorts); err != nil {
 			log.Println("ERROR:", err)
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return

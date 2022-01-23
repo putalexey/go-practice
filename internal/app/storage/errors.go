@@ -9,7 +9,7 @@ type RecordNotFoundError struct {
 	Value string
 }
 
-func (re *RecordNotFoundError) Error() string {
+func (re RecordNotFoundError) Error() string {
 	return fmt.Sprintf("record \"%s\" not found", re.Value)
 }
 
