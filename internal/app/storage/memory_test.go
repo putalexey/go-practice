@@ -148,7 +148,7 @@ func TestMemoryStorage_Store(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, records, 1)
 
-		err = store.Store(ctx, Record{"test2", "http://example.com/testme2", "testUser"})
+		err = store.Store(ctx, Record{"test2", "http://example.com/testme2", "testUser", false})
 		assert.NoError(t, err)
 
 		records, err = store.LoadForUser(ctx, "testUser")
@@ -158,9 +158,9 @@ func TestMemoryStorage_Store(t *testing.T) {
 
 	t.Run("not return other user's shorts", func(t *testing.T) {
 		store := &MemoryStorage{records: defaultRecords()}
-		err := store.Store(ctx, Record{"test2", "http://example.com/testme2", "testUser2"})
+		err := store.Store(ctx, Record{"test2", "http://example.com/testme2", "testUser2", false})
 		assert.NoError(t, err)
-		err = store.Store(ctx, Record{"test3", "http://example.com/testme3", "testUser2"})
+		err = store.Store(ctx, Record{"test3", "http://example.com/testme3", "testUser2", false})
 		assert.NoError(t, err)
 
 		records, err := store.LoadForUser(ctx, "testUser")

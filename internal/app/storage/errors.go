@@ -1,6 +1,9 @@
 package storage
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type RecordNotFoundError struct {
 	Value string
@@ -25,3 +28,5 @@ func (re *RecordConflictError) Error() string {
 func NewRecordConflictError(record Record) *RecordConflictError {
 	return &RecordConflictError{record}
 }
+
+var ErrAccessDenied = errors.New("access denied")

@@ -6,9 +6,10 @@ import (
 )
 
 type Record struct {
-	Short  string `json:"short"`
-	Full   string `json:"full"`
-	UserID string `json:"user_id"`
+	Short   string `json:"short"`
+	Full    string `json:"full"`
+	UserID  string `json:"user_id"`
+	Deleted bool
 }
 
 func NewRecord(full, userID string) (Record, error) {
@@ -33,5 +34,6 @@ type Storager interface {
 	Load(ctx context.Context, short string) (Record, error)
 	LoadForUser(ctx context.Context, userID string) ([]Record, error)
 	Delete(ctx context.Context, short string) error
+	DeleteBatchForUser(ctx context.Context, shorts []string, userID string) error
 	Ping(ctx context.Context) error
 }

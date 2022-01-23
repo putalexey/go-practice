@@ -58,6 +58,24 @@ func (s *MemoryStorage) Delete(_ context.Context, short string) error {
 	return nil
 }
 
+func (s *MemoryStorage) DeleteBatchForUser(_ context.Context, shorts []string, userID string) error {
+	// check all shorts exists
+	for _, short := range shorts {
+		v, ok := s.records[short]
+		if !ok {
+			return NewRecordNotFoundError(short)
+		}
+		if v.UserID != userID {
+			return ErrAccessDenied
+		}
+	}
+	// delete them
+	for _, short := range shorts {
+		delete(s.records, short)
+	}
+	return nil
+}
+
 func (s *MemoryStorage) Ping(_ context.Context) error {
 	return nil
 }

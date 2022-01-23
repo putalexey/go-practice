@@ -43,11 +43,16 @@ func GetFullURLHandler(storage storage.Storager) http.HandlerFunc {
 			return
 		}
 
-		if record, err := storage.Load(r.Context(), id); err == nil {
-			http.Redirect(w, r, record.Full, http.StatusTemporaryRedirect)
+		record, err := storage.Load(r.Context(), id)
+		if err != nil {
+			http.Error(w, "Not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, "Not found", http.StatusNotFound)
+		if record.Deleted {
+			http.Error(w, "Record has ben deleted", http.StatusGone)
+			return
+		}
+		http.Redirect(w, r, record.Full, http.StatusTemporaryRedirect)
 	}
 }
 
@@ -299,6 +304,79 @@ func JSONGetShortsForCurrentUser(generator urlgenerator.URLGenerator, storage st
 			log.Println("ERROR:", err)
 			panic(err)
 		}
+	}
+}
+
+func JSONDeleteUserShorts(store storage.Storager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		defer r.Body.Close()
+		if err != nil {
+			log.Println("ERROR:", err)
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if len(body) == 0 {
+			jsonError(w, "Empty request", http.StatusBadRequest)
+			return
+		}
+
+		userID, err := getUserIDFromRequest(r)
+		if err != nil {
+			log.Println("ERROR:", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		shorts := requests.DeleteShortBatchRequest{}
+		if err = json.Unmarshal(body, &shorts); err != nil {
+			jsonError(w, "Request can't be parsed", http.StatusBadRequest)
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), time.Second)
+		defer cancel()
+
+		if err = store.DeleteBatchForUser(ctx, shorts, userID); err != nil {
+			log.Println("ERROR:", err)
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		//batchInserter := storage.NewBatchInserter(store, 10)
+		//for _, item := range batch {
+		//	if !isValidURL(item.OriginalURL) {
+		//		jsonError(w, invalidURLError(item.OriginalURL), http.StatusBadRequest)
+		//		return
+		//	}
+		//
+		//	r, err := storage.NewRecord(item.OriginalURL, userID)
+		//	if err != nil {
+		//		log.Println("ERROR:", err)
+		//		jsonError(w, err.Error(), http.StatusInternalServerError)
+		//		return
+		//	}
+		//
+		//	if err := batchInserter.AddItem(ctx, r); err != nil {
+		//		log.Println("ERROR:", err)
+		//		jsonError(w, err.Error(), http.StatusInternalServerError)
+		//		return
+		//	}
+		//
+		//	responseItem := responses.CreateShortBatchResponseItem{
+		//		CorrelationID: item.CorrelationID,
+		//		ShortURL:      generator.GetURL(r.Short),
+		//	}
+		//	response = append(response, responseItem)
+		//}
+		//
+		//if err := batchInserter.Flush(ctx); err != nil {
+		//	log.Println("ERROR:", err)
+		//	jsonError(w, err.Error(), http.StatusInternalServerError)
+		//	return
+		//}
+
+		w.WriteHeader(http.StatusAccepted)
 	}
 }
 

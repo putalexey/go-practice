@@ -109,6 +109,25 @@ func (s *FileStorage) Delete(_ context.Context, short string) error {
 	return s.saveToFile()
 }
 
+func (s *FileStorage) DeleteBatchForUser(_ context.Context, shorts []string, userID string) error {
+	// check all shorts exists
+	filteredShorts := make([]string, 0, len(shorts))
+	for _, short := range shorts {
+		v, ok := s.records[short]
+		if !ok {
+			return NewRecordNotFoundError(short)
+		}
+		if v.UserID != userID {
+			return ErrAccessDenied
+		}
+	}
+	// delete them
+	for _, short := range filteredShorts {
+		delete(s.records, short)
+	}
+	return s.saveToFile()
+}
+
 func (s *FileStorage) Ping(_ context.Context) error {
 	return nil
 }

@@ -8,6 +8,8 @@ import (
 	_ "github.com/jackc/pgx/stdlib"
 	"github.com/pressly/goose/v3"
 	"log"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -110,9 +112,9 @@ func (s *DBStorage) Load(ctx context.Context, short string) (Record, error) {
 	defer cancel()
 
 	r := Record{}
-	selectSQL := fmt.Sprintf("SELECT short, original, user_id from %s WHERE short = $1 LIMIT 1", recordsTableName)
+	selectSQL := fmt.Sprintf("SELECT short, original, user_id, deleted from %s WHERE short = $1 LIMIT 1", recordsTableName)
 	row := s.db.QueryRowContext(ctx, selectSQL, short)
-	err := row.Scan(&r.Short, &r.Full, &r.UserID)
+	err := row.Scan(&r.Short, &r.Full, &r.UserID, &r.Deleted)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Record{}, NewRecordNotFoundError(short)
@@ -128,7 +130,7 @@ func (s *DBStorage) LoadForUser(ctx context.Context, userID string) ([]Record, e
 	defer cancel()
 
 	recordList := make([]Record, 0)
-	selectSQL := fmt.Sprintf("SELECT short, original, user_id from %s WHERE user_id = $1", recordsTableName)
+	selectSQL := fmt.Sprintf("SELECT short, original, user_id, deleted from %s WHERE user_id = $1 and deleted = FALSE", recordsTableName)
 	rows, err := s.db.QueryContext(ctx, selectSQL, userID)
 	if err != nil {
 		return nil, err
@@ -136,7 +138,7 @@ func (s *DBStorage) LoadForUser(ctx context.Context, userID string) ([]Record, e
 
 	for rows.Next() {
 		var r Record
-		err := rows.Scan(&r.Short, &r.Full, &r.UserID)
+		err := rows.Scan(&r.Short, &r.Full, &r.UserID, &r.Deleted)
 		if err != nil {
 			return nil, err
 		}
@@ -156,6 +158,33 @@ func (s *DBStorage) Delete(ctx context.Context, short string) error {
 
 	deleteSQL := fmt.Sprintf("DELETE FROM %s WHERE short = $1", recordsTableName)
 	_, err := s.db.ExecContext(ctx, deleteSQL, short)
+	return err
+}
+
+func (s *DBStorage) DeleteBatchForUser(ctx context.Context, shorts []string, userID string) error {
+	if len(shorts) == 0 {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
+	defer cancel()
+
+	pIndex := 1
+	args := make([]interface{}, 1, len(shorts)+1)
+	args[0] = userID
+	pIndex++
+
+	shortsPlaceholderList := make([]string, 0, len(shorts))
+	for _, short := range shorts {
+		//shortsPlaceholderList[i] = "$" + strconv.Itoa(pIndex)
+		shortsPlaceholderList = append(shortsPlaceholderList, "$"+strconv.Itoa(pIndex))
+		args = append(args, short)
+		pIndex++
+	}
+
+	shortsPlaceholderCommaList := strings.Join(shortsPlaceholderList, ",")
+	updateSQL := fmt.Sprintf("UPDATE %s SET deleted = TRUE WHERE user_id = $1 and short IN (%s)", recordsTableName, shortsPlaceholderCommaList)
+	_, err := s.db.ExecContext(ctx, updateSQL, args...)
 	return err
 }
 
