@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/putalexey/go-practicum/internal/app/shortener/requests"
 	"github.com/putalexey/go-practicum/internal/app/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -258,4 +260,48 @@ func TestShortener_NewRouter(t *testing.T) {
 		s := NewRouter(context.Background(), "localhost:8080", nil)
 		assert.IsType(t, &storage.MemoryStorage{}, s.storage)
 	})
+}
+
+func BenchmarkRouter(b *testing.B) {
+	store, err := storage.NewDBStorage("postgres://postgres:postgres@localhost:5432/praktikum?sslmode=disable", "")
+	if err != nil {
+		b.Fatal(err)
+	}
+	router := NewRouter(context.Background(), "localhost:8080", store)
+	urls := make([]string, b.N)
+	for i := range urls {
+		urls[i] = randomURL()
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		// create url
+		createReq := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(urls[i]))
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, createReq)
+		res := w.Result()
+		auth := res.Header.Get("auth")
+		res.Body.Close()
+
+		// delete url
+		body := strings.NewReader(fmt.Sprintf("[\"%s\"]", urls[i]))
+		deleteReq := httptest.NewRequest(http.MethodDelete, "/api/user/urls", body)
+		deleteReq.Header.Set("auth", auth)
+
+		w = httptest.NewRecorder()
+		router.ServeHTTP(w, deleteReq)
+		res = w.Result()
+		res.Body.Close()
+	}
+}
+
+const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+func randomURL() string {
+	size := rand.Intn(20) + 5
+	url := make([]byte, size)
+	for i := range url {
+		url[i] = letters[rand.Intn(len(letters))]
+	}
+	return "http://test.example.com/" + string(url)
 }
