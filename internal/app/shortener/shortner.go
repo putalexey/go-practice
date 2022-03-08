@@ -40,9 +40,9 @@ func NewRouter(ctx context.Context, baseURL string, store storage.Storager) *Sho
 	h.Post("/", handlers.CreateFullURLHandler(urlGenerator, store))
 	h.Get("/ping", handlers.PingHandler(store))
 	h.Get("/{id}", handlers.GetFullURLHandler(store))
-	h.Get("/user/urls", handlers.JSONGetShortsForCurrentUser(urlGenerator, store))
-	h.Post("/api/shorten/batch", handlers.JSONCreateShortBatch(urlGenerator, store))
 	h.Post("/api/shorten", handlers.JSONCreateShort(urlGenerator, store))
+	h.Post("/api/shorten/batch", handlers.JSONCreateShortBatch(urlGenerator, store))
+	h.Get("/api/user/urls", handlers.JSONGetShortsForCurrentUser(urlGenerator, store))
 	h.Delete("/api/user/urls", handlers.JSONDeleteUserShorts(store, batchDeleter))
 	h.MethodNotAllowed(handlers.BadRequestHandler())
 
