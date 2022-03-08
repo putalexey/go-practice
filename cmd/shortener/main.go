@@ -1,71 +1,51 @@
 package main
 
 import (
-	"flag"
+	"context"
+	"github.com/putalexey/go-practicum/cmd/shortener/config"
+	"github.com/putalexey/go-practicum/internal/app"
 	"log"
-	"net/http"
-
-	"github.com/caarlos0/env/v6"
-	"github.com/putalexey/go-practicum/internal/app/shortener"
-	"github.com/putalexey/go-practicum/internal/app/storage"
+	"os"
+	"os/signal"
+	"runtime/pprof"
+	"sync"
+	"syscall"
 )
-
-type EnvConfig struct {
-	Address         string `env:"SERVER_ADDRESS"`
-	BaseURL         string `env:"BASE_URL"`
-	FileStoragePath string `env:"FILE_STORAGE_PATH"`
-	DatabaseDSN     string `env:"DATABASE_DSN"`
-}
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	cfg := EnvConfig{
-		Address:         ":8080",
-		BaseURL:         "http://localhost:8080",
-		FileStoragePath: "",
-		DatabaseDSN:     "",
-	}
-	err := env.Parse(&cfg)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	parseFlags(&cfg)
-
-	var store storage.Storager
-	if cfg.FileStoragePath != "" {
-		if store, err = storage.NewFileStorage(cfg.FileStoragePath); err != nil {
-			log.Fatal(err)
+	cfg := config.Parse()
+	if cfg.ProfileCPUFile != "" {
+		fProfileCPU, err := os.Create(cfg.ProfileCPUFile)
+		if err != nil {
+			panic(err)
 		}
-	}
-	if cfg.DatabaseDSN != "" {
-		if store, err = storage.NewDBStorage(cfg.DatabaseDSN, "migrations"); err != nil {
-			log.Fatal(err)
+		defer fProfileCPU.Close()
+		if err := pprof.StartCPUProfile(fProfileCPU); err != nil {
+			panic(err)
 		}
+		defer pprof.StopCPUProfile()
 	}
 
-	router := shortener.NewRouter(cfg.BaseURL, store)
-	log.Fatal(http.ListenAndServe(cfg.Address, router))
-}
+	ctx, cancel := context.WithCancel(context.Background())
 
-func parseFlags(cfg *EnvConfig) {
-	addressFlag := flag.String("a", "", "Адрес запуска HTTP-сервера")
-	baseURLFlag := flag.String("b", "", "Базовый адрес результирующего сокращённого URL")
-	fileStoragePathFlag := flag.String("f", "", "Путь до файла с сокращёнными URL")
-	databaseDSNFlag := flag.String("d", "", "Адрес подключения к БД")
-	flag.Parse()
+	finished := sync.WaitGroup{}
+	finished.Add(1)
+	go func() {
+		defer finished.Done()
+		app.Run(ctx, cfg)
+	}()
 
-	if *addressFlag != "" {
-		cfg.Address = *addressFlag
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	select {
+	case <-quit:
+	case <-ctx.Done():
 	}
-	if *baseURLFlag != "" {
-		cfg.BaseURL = *baseURLFlag
-	}
-	if *fileStoragePathFlag != "" {
-		cfg.FileStoragePath = *fileStoragePathFlag
-	}
-	if *databaseDSNFlag != "" {
-		cfg.DatabaseDSN = *databaseDSNFlag
-	}
+
+	log.Println("Shutting down server...")
+	cancel()
+
+	finished.Wait()
 }

@@ -26,7 +26,7 @@ type BatchDeleter struct {
 	ctx        context.Context
 }
 
-func NewBatchDeleter(store Storager, bufferSize int) *BatchDeleter {
+func NewBatchDeleterWithContext(ctx context.Context, store Storager, bufferSize int) *BatchDeleter {
 	//ctx, cancel := context.WithCancel(context.Background())
 	fm := &sync.Mutex{}
 	deleter := BatchDeleter{
@@ -36,16 +36,10 @@ func NewBatchDeleter(store Storager, bufferSize int) *BatchDeleter {
 		bufferSize: bufferSize,
 		inputChan:  make(chan DeleteTask, bufferSize),
 		ticker:     time.NewTicker(10 * time.Second),
-		ctx:        context.Background(),
+		ctx:        ctx,
 	}
 
-	go deleter.flushWorker()
-	go func() {
-		for {
-			<-deleter.ticker.C
-			deleter.cond.Signal()
-		}
-	}()
+	go deleter.Start()
 
 	return &deleter
 }
@@ -123,4 +117,28 @@ func (b *BatchDeleter) doWork() (queue map[string]*DeleteTask) {
 			return
 		}
 	}
+}
+
+func (b *BatchDeleter) Start() {
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		b.flushWorker()
+	}()
+
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-b.ticker.C:
+				b.cond.Signal()
+			case <-b.ctx.Done():
+				b.ticker.Stop()
+				return
+			}
+		}
+	}()
+
+	wg.Wait()
 }

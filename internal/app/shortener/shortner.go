@@ -1,6 +1,7 @@
 package shortener
 
 import (
+	"context"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	appMiddleware "github.com/putalexey/go-practicum/internal/app/middleware"
@@ -16,7 +17,7 @@ type Shortener struct {
 	storage storage.Storager
 }
 
-func NewRouter(baseURL string, store storage.Storager) *Shortener {
+func NewRouter(ctx context.Context, baseURL string, store storage.Storager) *Shortener {
 	if store == nil {
 		store = &storage.MemoryStorage{}
 	}
@@ -25,7 +26,7 @@ func NewRouter(baseURL string, store storage.Storager) *Shortener {
 		storage: store,
 	}
 	urlGenerator := &urlgenerator.SequenceGenerator{BaseURL: baseURL}
-	batchDeleter := storage.NewBatchDeleter(store, 5)
+	batchDeleter := storage.NewBatchDeleterWithContext(ctx, store, 5)
 
 	h.Use(middleware.Logger)
 	h.Use(middleware.Recoverer)

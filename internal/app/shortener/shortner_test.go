@@ -2,6 +2,7 @@ package shortener
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"github.com/putalexey/go-practicum/internal/app/shortener/requests"
 	"github.com/putalexey/go-practicum/internal/app/storage"
@@ -114,7 +115,7 @@ func TestShortener_Base(t *testing.T) {
 			request := httptest.NewRequest(tt.request.method, tt.request.target, requestBody)
 			w := httptest.NewRecorder()
 
-			s := NewRouter("localhost:8080", storage.NewMemoryStorage(tt.shorts))
+			s := NewRouter(context.Background(), "localhost:8080", storage.NewMemoryStorage(tt.shorts))
 			s.ServeHTTP(w, request)
 
 			result := w.Result()
@@ -201,7 +202,7 @@ func TestShortener_JSONCreateFails(t *testing.T) {
 			request := httptest.NewRequest(tt.request.method, tt.request.target, requestBody)
 			w := httptest.NewRecorder()
 
-			s := NewRouter("localhost:8080", storage.NewMemoryStorage(tt.shorts))
+			s := NewRouter(context.Background(), "localhost:8080", storage.NewMemoryStorage(tt.shorts))
 			s.ServeHTTP(w, request)
 
 			result := w.Result()
@@ -230,7 +231,7 @@ func TestShortener_JSONCreates(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, "/api/shorten", requestBody)
 		w := httptest.NewRecorder()
 
-		s := NewRouter("localhost:8080", nil)
+		s := NewRouter(context.Background(), "localhost:8080", nil)
 		s.ServeHTTP(w, request)
 
 		result := w.Result()
@@ -254,7 +255,7 @@ func TestShortener_JSONCreates(t *testing.T) {
 
 func TestShortener_NewRouter(t *testing.T) {
 	t.Run("default router storage is MemoryStorage ", func(t *testing.T) {
-		s := NewRouter("localhost:8080", nil)
+		s := NewRouter(context.Background(), "localhost:8080", nil)
 		assert.IsType(t, &storage.MemoryStorage{}, s.storage)
 	})
 }
