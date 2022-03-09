@@ -2,13 +2,14 @@ package app
 
 import (
 	"context"
-	"github.com/putalexey/go-practicum/cmd/shortener/config"
-	"github.com/putalexey/go-practicum/internal/app/shortener"
-	"github.com/putalexey/go-practicum/internal/app/storage"
 	"log"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/putalexey/go-practicum/cmd/shortener/config"
+	"github.com/putalexey/go-practicum/internal/app/shortener"
+	"github.com/putalexey/go-practicum/internal/app/storage"
 )
 
 func Run(ctx context.Context, cfg config.EnvConfig) {

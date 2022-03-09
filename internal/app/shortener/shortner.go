@@ -2,8 +2,10 @@ package shortener
 
 import (
 	"context"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+
 	appMiddleware "github.com/putalexey/go-practicum/internal/app/middleware"
 	"github.com/putalexey/go-practicum/internal/app/shortener/handlers"
 	"github.com/putalexey/go-practicum/internal/app/storage"

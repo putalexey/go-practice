@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/putalexey/go-practicum/internal/app/middleware"
 	"io"
 	"log"
 	"net/http"
@@ -13,6 +12,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/putalexey/go-practicum/internal/app/middleware"
 	"github.com/putalexey/go-practicum/internal/app/shortener/requests"
 	"github.com/putalexey/go-practicum/internal/app/shortener/responses"
 	"github.com/putalexey/go-practicum/internal/app/storage"

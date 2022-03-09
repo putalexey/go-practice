@@ -5,12 +5,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	_ "github.com/jackc/pgx/stdlib"
-	"github.com/pressly/goose/v3"
 	"log"
 	"strconv"
 	"strings"
 	"time"
+
+	_ "github.com/jackc/pgx/stdlib"
+	"github.com/pressly/goose/v3"
 )
 
 var _ Storager = &DBStorage{}
