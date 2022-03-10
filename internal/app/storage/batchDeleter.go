@@ -14,6 +14,7 @@ type DeleteTask struct {
 	userID string
 }
 
+// BatchDeleter queues delete url requests and executes all of them in one request to storager
 type BatchDeleter struct {
 	//addMutex   *sync.Mutex
 	flushMutex *sync.Mutex
@@ -44,6 +45,7 @@ func NewBatchDeleterWithContext(ctx context.Context, store Storager, bufferSize 
 	return &deleter
 }
 
+// QueueItems add shorts to the delete queue
 func (b *BatchDeleter) QueueItems(shorts []string, userID string) {
 	go func() {
 		log.Println("DEBUG: adding to queue", shorts)
@@ -119,6 +121,7 @@ func (b *BatchDeleter) doWork() (queue map[string]*DeleteTask) {
 	}
 }
 
+// Start processing delete queue
 func (b *BatchDeleter) Start() {
 	wg := sync.WaitGroup{}
 	wg.Add(2)

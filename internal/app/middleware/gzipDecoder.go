@@ -5,6 +5,7 @@ import (
 	"net/http"
 )
 
+// GZipDecoder middleware decompresses gzip encoded request
 func GZipDecoder(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		var err error

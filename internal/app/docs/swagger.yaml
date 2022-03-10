@@ -1,0 +1,237 @@
+basePath: /
+definitions:
+  requests.CreateShortBatchItem:
+    properties:
+      correlation_id:
+        type: string
+      original_url:
+        type: string
+    type: object
+  requests.CreateShortRequest:
+    properties:
+      url:
+        example: http://example.com/asd
+        type: string
+    type: object
+  responses.CreateShortBatchResponseItem:
+    properties:
+      correlation_id:
+        type: string
+      short_url:
+        type: string
+    type: object
+  responses.CreateShortResponse:
+    properties:
+      result:
+        example: http://shortener.org/123
+        type: string
+    type: object
+  responses.ErrorResponse:
+    properties:
+      error:
+        example: Not found
+        type: string
+    type: object
+  responses.ListShortItem:
+    properties:
+      original_url:
+        example: http://example.com/
+        type: string
+      short_url:
+        example: http://shortener.org/123
+        type: string
+    type: object
+info:
+  contact: {}
+  description: API server for shorting log urls to short ones
+  title: Shortener API
+  version: "1.0"
+paths:
+  /:
+    post:
+      consumes:
+      - text/plain
+      parameters:
+      - description: Full url for shortening
+        in: body
+        name: url
+        required: true
+        schema:
+          type: string
+      produces:
+      - text/plain
+      responses:
+        "201":
+          description: http://shortener.org/123
+          schema:
+            type: string
+        "400":
+          description: 'invalid url: http//example'
+          schema:
+            type: string
+        "409":
+          description: http://shortener.org/123
+          schema:
+            type: string
+        "500":
+          description: Server error
+          schema:
+            type: string
+      summary: Create new short url
+  /{id}:
+    get:
+      parameters:
+      - description: url id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "307":
+          description: redirects to full url
+          headers:
+            Location:
+              description: http://example.com/
+              type: string
+        "400":
+          description: Bad request
+          schema:
+            type: string
+        "404":
+          description: Not found
+          schema:
+            type: string
+        "410":
+          description: Record has been deleted
+          schema:
+            type: string
+      summary: Redirects to the full url, if found in storage by {id}
+  /api/shorten:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Full url for shortening
+        in: body
+        name: fullURL
+        required: true
+        schema:
+          $ref: '#/definitions/requests.CreateShortRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: URL saved, short url returned in result field
+          schema:
+            $ref: '#/definitions/responses.CreateShortResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "409":
+          description: Full URL already added earlier, old short url is returned in
+            result field
+          schema:
+            $ref: '#/definitions/responses.CreateShortResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: Create new short url
+  /api/shorten/batch:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: List of full urls for shortening
+        in: body
+        name: fullURList
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/requests.CreateShortBatchItem'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            items:
+              $ref: '#/definitions/responses.CreateShortBatchResponseItem'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: Create many new short urls
+  /api/user/urls:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: List of urls to delete
+        in: body
+        name: deleteURLs
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Delete request accepted and put on queue, urls will be deleted
+            eventually
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: Delete urls user shortened earlier
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of urls, user added
+          schema:
+            items:
+              $ref: '#/definitions/responses.ListShortItem'
+            type: array
+        "204":
+          description: No Content. User not added any urls yet
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: Get all urls user shortened
+  /ping:
+    get:
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: DB unavailable
+          schema:
+            type: string
+      summary: returns "OK" if service is working and storage is available
+swagger: "2.0"

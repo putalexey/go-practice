@@ -15,12 +15,15 @@ type AuthKey string
 
 var UIDKey = AuthKey("UID")
 
+// AuthCookie creates middleware that will create cookie with user authentication.
+// Middleware adds user id to the request context with key middleware.UIDKey. user id is UUID (Version 4)
+// keyString is used to encrypt cookie value.
 func AuthCookie(cookieName string, keyString string) func(http.Handler) http.Handler {
 	tmp := sha256.Sum256([]byte(keyString))
 	key := tmp[:]
 
 	return func(next http.Handler) http.Handler {
-		handler := AuthCookieHandler{
+		handler := authCookieHandler{
 			next:       next,
 			cookieName: cookieName,
 			key:        key,
@@ -29,13 +32,13 @@ func AuthCookie(cookieName string, keyString string) func(http.Handler) http.Han
 	}
 }
 
-type AuthCookieHandler struct {
+type authCookieHandler struct {
 	next       http.Handler
 	cookieName string
 	key        []byte
 }
 
-func (h AuthCookieHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h authCookieHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var (
 		userCtx context.Context
 		uid     string
@@ -77,7 +80,8 @@ func randUID() (string, error) {
 	return uid.String(), nil
 }
 
-func (h AuthCookieHandler) findUIDInCookies(r *http.Request) (string, error) {
+// findUIDInCookies gets cookie and tries to decrypt it, returns http.ErrNoCookie on cookie absence or decrypt error
+func (h authCookieHandler) findUIDInCookies(r *http.Request) (string, error) {
 	authCookie, err := r.Cookie(h.cookieName)
 	if err != nil {
 		return "", err
@@ -91,7 +95,7 @@ func (h AuthCookieHandler) findUIDInCookies(r *http.Request) (string, error) {
 	return uid, nil
 }
 
-func (h AuthCookieHandler) newCookie(uid string) (*http.Cookie, error) {
+func (h authCookieHandler) newCookie(uid string) (*http.Cookie, error) {
 	encryptedUID, err := h.encryptUID(uid)
 	if err != nil {
 		return nil, err
@@ -108,7 +112,7 @@ func (h AuthCookieHandler) newCookie(uid string) (*http.Cookie, error) {
 	return &cook, nil
 }
 
-func (h AuthCookieHandler) encryptUID(uid string) (string, error) {
+func (h authCookieHandler) encryptUID(uid string) (string, error) {
 	aesgcm, err := h.prepareGcm()
 	if err != nil {
 		return "", err
@@ -119,7 +123,7 @@ func (h AuthCookieHandler) encryptUID(uid string) (string, error) {
 	return hex.EncodeToString(encrypted), nil
 }
 
-func (h AuthCookieHandler) decryptUID(encrypted string) (string, error) {
+func (h authCookieHandler) decryptUID(encrypted string) (string, error) {
 	aesgcm, err := h.prepareGcm()
 	if err != nil {
 		return "", err
@@ -139,7 +143,7 @@ func (h AuthCookieHandler) decryptUID(encrypted string) (string, error) {
 	return string(uid), nil
 }
 
-func (h AuthCookieHandler) prepareGcm() (cipher.AEAD, error) {
+func (h authCookieHandler) prepareGcm() (cipher.AEAD, error) {
 	aesblock, err := aes.NewCipher(h.key)
 	if err != nil {
 		return nil, err

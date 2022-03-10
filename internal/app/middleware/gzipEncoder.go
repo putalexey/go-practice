@@ -16,6 +16,7 @@ func (w GZipWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
+// GZipEncoder middleware compresses response with gzip, if client accepts gzip encoding with "Accept-Encoding" header
 func GZipEncoder(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		writer := w

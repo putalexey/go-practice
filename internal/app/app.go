@@ -1,3 +1,4 @@
+// Package app implements api service of shortening urls
 package app
 
 import (
@@ -8,10 +9,18 @@ import (
 	"time"
 
 	"github.com/putalexey/go-practicum/cmd/shortener/config"
+	_ "github.com/putalexey/go-practicum/internal/app/docs"
 	"github.com/putalexey/go-practicum/internal/app/shortener"
 	"github.com/putalexey/go-practicum/internal/app/storage"
 )
 
+// @title Shortener API
+// @version 1.0
+// @description API server for shorting log urls to short ones
+// @BasePath /
+
+// Run starts http server with shortener module as router. If ctx context is canceled,
+// then http server will gracefully shutdown
 func Run(ctx context.Context, cfg config.EnvConfig) {
 	var err error
 
@@ -46,6 +55,7 @@ func Run(ctx context.Context, cfg config.EnvConfig) {
 	wg.Wait()
 }
 
+// initStorage initializes one of supported storagers
 func initStorage(cfg config.EnvConfig) (storage.Storager, error) {
 	if cfg.FileStoragePath != "" {
 		return storage.NewFileStorage(cfg.FileStoragePath)

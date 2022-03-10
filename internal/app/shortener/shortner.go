@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	httpSwagger "github.com/swaggo/http-swagger"
 
 	appMiddleware "github.com/putalexey/go-practicum/internal/app/middleware"
 	"github.com/putalexey/go-practicum/internal/app/shortener/handlers"
@@ -19,6 +20,16 @@ type Shortener struct {
 	storage storage.Storager
 }
 
+// NewRouter creates shortener router.
+// baseURL - base url of the service
+// List of routes:
+// * {POST} / - shortens url
+// * {GET} /ping - server status check
+// * {GET} /{id} - get full url
+// * {POST} /api/shorten - shortens url
+// * {POST} /api/shorten/batch - shortens batch of urls
+// * {GET} /api/user/urls - get all shorten urls of the user
+// * {DELETE} /api/user/urls - delete some of the user's shortened urls
 func NewRouter(ctx context.Context, baseURL string, store storage.Storager) *Shortener {
 	if store == nil {
 		store = &storage.MemoryStorage{}
@@ -46,6 +57,10 @@ func NewRouter(ctx context.Context, baseURL string, store storage.Storager) *Sho
 	h.Post("/api/shorten/batch", handlers.JSONCreateShortBatch(urlGenerator, store))
 	h.Get("/api/user/urls", handlers.JSONGetShortsForCurrentUser(urlGenerator, store))
 	h.Delete("/api/user/urls", handlers.JSONDeleteUserShorts(store, batchDeleter))
+
+	h.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL(baseURL+"/swagger/doc.json"),
+	))
 	h.MethodNotAllowed(handlers.BadRequestHandler())
 
 	return h

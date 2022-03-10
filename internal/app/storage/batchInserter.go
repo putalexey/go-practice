@@ -15,12 +15,14 @@ func NewBatchInserter(store Storager, bufferSize int) *BatchInserter {
 	return &inserter
 }
 
+// BatchInserter allows to insert multiple shorts in one request to storage
 type BatchInserter struct {
 	store      Storager
 	bufferSize int
 	buffer     []Record
 }
 
+// AddItem to the insert queue. If buffer is full, records flushes to storage
 func (b *BatchInserter) AddItem(ctx context.Context, r Record) error {
 	b.buffer = append(b.buffer, r)
 	if len(b.buffer) == cap(b.buffer) {
@@ -32,6 +34,7 @@ func (b *BatchInserter) AddItem(ctx context.Context, r Record) error {
 	return nil
 }
 
+// Flush write records in queue to the store
 func (b *BatchInserter) Flush(ctx context.Context) error {
 	if len(b.buffer) == 0 {
 		return nil
