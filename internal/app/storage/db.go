@@ -142,7 +142,7 @@ func (s *DBStorage) LoadBatch(ctx context.Context, shorts []string) ([]Record, e
 
 	for rows.Next() {
 		var r Record
-		err := rows.Scan(&r.Short, &r.Full, &r.UserID, &r.Deleted)
+		err = rows.Scan(&r.Short, &r.Full, &r.UserID, &r.Deleted)
 		if err != nil {
 			return nil, err
 		}
@@ -169,7 +169,7 @@ func (s *DBStorage) LoadForUser(ctx context.Context, userID string) ([]Record, e
 
 	for rows.Next() {
 		var r Record
-		err := rows.Scan(&r.Short, &r.Full, &r.UserID, &r.Deleted)
+		err = rows.Scan(&r.Short, &r.Full, &r.UserID, &r.Deleted)
 		if err != nil {
 			return nil, err
 		}

@@ -16,11 +16,9 @@ type DeleteTask struct {
 
 // BatchDeleter queues delete url requests and executes all of them in one request to storager
 type BatchDeleter struct {
-	//addMutex   *sync.Mutex
 	flushMutex *sync.Mutex
 	cond       *sync.Cond
 	store      Storager
-	//inputChan     []DeleteTask
 	inputChan  chan DeleteTask
 	bufferSize int
 	ticker     *time.Ticker

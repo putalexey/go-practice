@@ -262,16 +262,16 @@ func JSONCreateShortBatch(generator urlgenerator.URLGenerator, store storage.Sto
 				return
 			}
 
-			r, err := storage.NewRecord(item.OriginalURL, userID)
-			if err != nil {
-				log.Println("ERROR:", err)
-				jsonError(w, err.Error(), http.StatusInternalServerError)
+			r, err2 := storage.NewRecord(item.OriginalURL, userID)
+			if err2 != nil {
+				log.Println("ERROR:", err2)
+				jsonError(w, err2.Error(), http.StatusInternalServerError)
 				return
 			}
 
-			if err := batchInserter.AddItem(ctx, r); err != nil {
-				log.Println("ERROR:", err)
-				jsonError(w, err.Error(), http.StatusInternalServerError)
+			if err2 = batchInserter.AddItem(ctx, r); err2 != nil {
+				log.Println("ERROR:", err2)
+				jsonError(w, err2.Error(), http.StatusInternalServerError)
 				return
 			}
 
@@ -282,7 +282,7 @@ func JSONCreateShortBatch(generator urlgenerator.URLGenerator, store storage.Sto
 			response = append(response, responseItem)
 		}
 
-		if err := batchInserter.Flush(ctx); err != nil {
+		if err = batchInserter.Flush(ctx); err != nil {
 			log.Println("ERROR:", err)
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
