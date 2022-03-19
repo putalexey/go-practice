@@ -2,14 +2,15 @@ package main
 
 import (
 	"context"
-	"github.com/putalexey/go-practicum/cmd/shortener/config"
-	"github.com/putalexey/go-practicum/internal/app"
 	"log"
 	"os"
 	"os/signal"
 	"runtime/pprof"
 	"sync"
 	"syscall"
+
+	"github.com/putalexey/go-practicum/cmd/shortener/config"
+	"github.com/putalexey/go-practicum/internal/app"
 )
 
 func main() {

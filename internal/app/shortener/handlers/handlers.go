@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/putalexey/go-practicum/internal/app/middleware"
 	"io"
 	"log"
 	"net/http"
@@ -13,18 +12,26 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/putalexey/go-practicum/internal/app/middleware"
 	"github.com/putalexey/go-practicum/internal/app/shortener/requests"
 	"github.com/putalexey/go-practicum/internal/app/shortener/responses"
 	"github.com/putalexey/go-practicum/internal/app/storage"
 	"github.com/putalexey/go-practicum/internal/app/urlgenerator"
 )
 
+// PingHandler godoc
+// @Summary returns "OK" if service is working and storage is available
+// @Produce plain
+// @Success 200 {string} string "OK"
+// @Failure 500	{string} string "DB unavailable"
+// @Router /ping [get]
 func PingHandler(storage storage.Storager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := storage.Ping(r.Context())
 		if err != nil {
-			log.Println("ERROR: DB unavalable:", err)
-			http.Error(w, "DB unavalable", http.StatusInternalServerError)
+			log.Println("ERROR: DB unavailable:", err)
+			http.Error(w, "DB unavailable", http.StatusInternalServerError)
 			return
 		}
 		_, err = w.Write([]byte("OK"))
@@ -35,6 +42,16 @@ func PingHandler(storage storage.Storager) http.HandlerFunc {
 	}
 }
 
+// GetFullURLHandler godoc
+// @Summary	Redirects to the full url, if found in storage by {id}
+// @Produce	plain
+// @Param	id	path	string	true	"url id"
+// @Success	307	"redirects to full url"
+// @Failure	400	{string}	string	"Bad request"
+// @Failure	404	{string}	string	"Not found"
+// @Failure	410	{string}	string	"Record has been deleted"
+// @Header	307	{string}	Location	"http://example.com/"
+// @Router	/{id}	[get]
 func GetFullURLHandler(storage storage.Storager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
@@ -49,13 +66,24 @@ func GetFullURLHandler(storage storage.Storager) http.HandlerFunc {
 			return
 		}
 		if record.Deleted {
-			http.Error(w, "Record has ben deleted", http.StatusGone)
+			http.Error(w, "Record has been deleted", http.StatusGone)
 			return
 		}
 		http.Redirect(w, r, record.Full, http.StatusTemporaryRedirect)
 	}
 }
 
+// CreateFullURLHandler godoc
+// @Summary	Create new short url
+// @Accept	plain
+// @Produce	plain
+// @Param	url	body	string	true	"Full url for shortening"
+// @Success	201	{string}	string	"http://shortener.org/123"
+// @Failure	409	{string}	string	"http://shortener.org/123"
+// @Failure	400	{string}	string	"Empty request"
+// @Failure	400	{string}	string	"invalid url: http//example"
+// @Failure	500	{string}	string	"Server error"
+// @Router	/	[post]
 func CreateFullURLHandler(generator urlgenerator.URLGenerator, store storage.Storager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		responseStatus := http.StatusCreated
@@ -106,6 +134,16 @@ func CreateFullURLHandler(generator urlgenerator.URLGenerator, store storage.Sto
 	}
 }
 
+// JSONCreateShort godoc
+// @Summary	Create new short url
+// @Accept	json
+// @Produce	json
+// @Param	fullURL	body	requests.CreateShortRequest	true	"Full url for shortening"
+// @Success	201	{object}	responses.CreateShortResponse	"URL saved, short url returned in result field"
+// @Failure	409	{object}	responses.CreateShortResponse	"Full URL already added earlier, old short url is returned in result field"
+// @Failure	400	{object}	responses.ErrorResponse
+// @Failure	500	{object}	responses.ErrorResponse
+// @Router	/api/shorten	[post]
 func JSONCreateShort(generator urlgenerator.URLGenerator, store storage.Storager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		responseStatus := http.StatusCreated
@@ -177,6 +215,15 @@ func JSONCreateShort(generator urlgenerator.URLGenerator, store storage.Storager
 	}
 }
 
+// JSONCreateShortBatch godoc
+// @Summary	Create many new short urls
+// @Accept	json
+// @Produce	json
+// @Param	fullURList	body	requests.CreateShortBatchRequest	true	"List of full urls for shortening"
+// @Success	201	{object}	responses.CreateShortBatchResponse
+// @Failure	400	{object}	responses.ErrorResponse
+// @Failure	500	{object}	responses.ErrorResponse
+// @Router	/api/shorten/batch	[post]
 func JSONCreateShortBatch(generator urlgenerator.URLGenerator, store storage.Storager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
@@ -262,6 +309,14 @@ func isValidURL(uri string) bool {
 	return err == nil
 }
 
+// JSONGetShortsForCurrentUser godoc
+// @Summary	Get all urls user shortened
+// @Produce	json
+// @Success	200	{object}	responses.ListShortsResponse	"List of urls, user added"
+// @Success	204	"No Content. User not added any urls yet"
+// @Failure	400	{object}	responses.ErrorResponse
+// @Failure	500	{object}	responses.ErrorResponse
+// @Router	/api/user/urls	[get]
 func JSONGetShortsForCurrentUser(generator urlgenerator.URLGenerator, storage storage.Storager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := getUserIDFromRequest(r)
@@ -307,6 +362,15 @@ func JSONGetShortsForCurrentUser(generator urlgenerator.URLGenerator, storage st
 	}
 }
 
+// JSONDeleteUserShorts godoc
+// @Summary	Delete urls user shortened earlier
+// @Accept	json
+// @Produce	json
+// @Param	deleteURLs	body	requests.DeleteShortBatchRequest	true	"List of urls to delete"
+// @Success	202	"Delete request accepted and put on queue, urls will be deleted eventually"
+// @Failure	400	{object}	responses.ErrorResponse
+// @Failure	500	{object}	responses.ErrorResponse
+// @Router	/api/user/urls	[delete]
 func JSONDeleteUserShorts(_ storage.Storager, batchDeleter *storage.BatchDeleter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
@@ -362,6 +426,7 @@ func JSONDeleteUserShorts(_ storage.Storager, batchDeleter *storage.BatchDeleter
 	}
 }
 
+// BadRequestHandler handles requests to route with method not supported by route
 func BadRequestHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
@@ -383,6 +448,7 @@ func jsonError(w http.ResponseWriter, errMessage string, code int) {
 	}
 }
 
+// getUserIDFromRequest returns user id from request's context
 func getUserIDFromRequest(r *http.Request) (string, error) {
 	userID, ok := r.Context().Value(middleware.UIDKey).(string)
 	if !ok || userID == "" {

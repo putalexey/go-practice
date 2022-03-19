@@ -5,16 +5,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/putalexey/go-practicum/internal/app/shortener/requests"
-	"github.com/putalexey/go-practicum/internal/app/storage"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/putalexey/go-practicum/internal/app/shortener/requests"
+	"github.com/putalexey/go-practicum/internal/app/storage"
 )
 
 func TestShortener_Base(t *testing.T) {

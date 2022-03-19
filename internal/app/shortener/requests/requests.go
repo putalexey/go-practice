@@ -1,7 +1,7 @@
 package requests
 
 type CreateShortRequest struct {
-	URL string `json:"url"`
+	URL string `json:"url" example:"http://example.com/asd"`
 }
 
 type CreateShortBatchRequest []CreateShortBatchItem
