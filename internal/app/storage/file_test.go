@@ -20,7 +20,6 @@ var testData = []byte("{\"short\":\"test\",\"full\":\"http://example.com/testme\
 
 func TestFileStorage(t *testing.T) {
 	ctx := context.Background()
-	var err error
 	tempfilepath := GetFilePath()
 	defer os.Remove(tempfilepath)
 
@@ -179,7 +178,7 @@ func TestFileStorage(t *testing.T) {
 		assert.Len(t, records, 0)
 	})
 
-	err = os.WriteFile(tempfilepath, []byte("{\"short\":\"asd\",\"full\":\"http://example.com/tes"), 0666)
+	err := os.WriteFile(tempfilepath, []byte("{\"short\":\"asd\",\"full\":\"http://example.com/tes"), 0666)
 	require.NoError(t, err)
 	t.Run("returns errors when fails to read file", func(t *testing.T) {
 		store, err := NewFileStorage(tempfilepath)
