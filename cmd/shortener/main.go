@@ -3,15 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/putalexey/go-practicum/cmd/shortener/config"
+	"github.com/putalexey/go-practicum/internal/app"
 	"log"
 	"os"
 	"os/signal"
 	"runtime/pprof"
 	"sync"
 	"syscall"
-
-	"github.com/putalexey/go-practicum/cmd/shortener/config"
-	"github.com/putalexey/go-practicum/internal/app"
 )
 
 var buildVersion = "N/A"
@@ -45,6 +44,7 @@ func main() {
 	go func() {
 		defer finished.Done()
 		app.Run(ctx, cfg)
+		cancel()
 	}()
 
 	quit := make(chan os.Signal, 1)

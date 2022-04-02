@@ -13,6 +13,9 @@ type EnvConfig struct {
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	DatabaseDSN     string `env:"DATABASE_DSN"`
 	ProfileCPUFile  string `env:"PROFILE_CPU"`
+	EnableHTTPS     bool   `env:"ENABLE_HTTPS"`
+	CertFile        string `env:"CERT"`
+	CertKeyFile     string `env:"CERT_KEY"`
 }
 
 func Parse() EnvConfig {
@@ -21,6 +24,9 @@ func Parse() EnvConfig {
 		BaseURL:         "http://localhost:8080",
 		FileStoragePath: "",
 		DatabaseDSN:     "",
+		EnableHTTPS:     false,
+		CertFile:        "./cert/certificate.crt",
+		CertKeyFile:     "./cert/certificate.key",
 	}
 	err := env.Parse(&cfg)
 	if err != nil {
@@ -38,6 +44,9 @@ func (cfg *EnvConfig) parseFlags() {
 	fileStoragePathFlag := flag.String("f", "", "Путь до файла с сокращёнными URL")
 	databaseDSNFlag := flag.String("d", "", "Адрес подключения к БД")
 	profileCPUFlag := flag.String("pcpu", "", "Файл для полайлинга cpu")
+	enableHTTPSFlag := flag.Bool("s", false, "Включить HTTPS")
+	certFile := flag.String("c", "", "Путь к файлу сертификата")
+	certKeyFile := flag.String("k", "", "Путь к ключу сертификата")
 	flag.Parse()
 
 	if *addressFlag != "" {
@@ -54,5 +63,14 @@ func (cfg *EnvConfig) parseFlags() {
 	}
 	if *profileCPUFlag != "" {
 		cfg.ProfileCPUFile = *profileCPUFlag
+	}
+	if *enableHTTPSFlag {
+		cfg.EnableHTTPS = true
+	}
+	if *certFile != "" {
+		cfg.CertFile = *certFile
+	}
+	if *certKeyFile != "" {
+		cfg.CertKeyFile = *certKeyFile
 	}
 }
