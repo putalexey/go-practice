@@ -37,7 +37,10 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	defer stop()
+
+	ctx, cancel := context.WithCancel(ctx)
 
 	finished := sync.WaitGroup{}
 	finished.Add(1)
@@ -47,12 +50,7 @@ func main() {
 		cancel()
 	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	select {
-	case <-quit:
-	case <-ctx.Done():
-	}
+	<-ctx.Done()
 
 	log.Println("Shutting down server...")
 	cancel()
