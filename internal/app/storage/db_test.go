@@ -7,51 +7,61 @@ import (
 	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
 	_ "github.com/jackc/pgx/stdlib"
-	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"log"
 	"testing"
 )
 
 var db *sql.DB
 
 func withDockerDB(f func(databaseDSN string, db *sql.DB)) error {
-	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
-	pool, err := dockertest.NewPool("")
+	databaseDSN := "postgres://postgres:postgres@postgres:5432/praktikum"
+	db, err := sql.Open("pgx", databaseDSN)
 	if err != nil {
-		return fmt.Errorf("could not connect to docker: %w", err)
+		return err
 	}
-
-	// pulls an image, creates a container based on it and runs it
-	resource, err := pool.Run("postgres", "latest", []string{"POSTGRES_PASSWORD=secret"})
+	err = db.Ping()
 	if err != nil {
-		return fmt.Errorf("could not start resource: %w", err)
+		return err
 	}
-	defer func() {
-		// You can't defer this because os.Exit doesn't care for defer
-		if err := pool.Purge(resource); err != nil {
-			log.Fatalf("Could not purge resource: %s", err)
-		}
-	}()
-
-	databaseDSN := fmt.Sprintf("postgres://postgres:secret@localhost:%s/postgres", resource.GetPort("5432/tcp"))
-	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
-	err = pool.Retry(func() error {
-		var err error
-		db, err = sql.Open("pgx", databaseDSN)
-		if err != nil {
-			return err
-		}
-		return db.Ping()
-	})
-	if err != nil {
-		return fmt.Errorf("could not connect to database: %w", err)
-	}
-
 	f(databaseDSN, db)
-
 	return nil
+
+	//// uses a sensible default on windows (tcp/http) and linux/osx (socket)
+	//pool, err := dockertest.NewPool("")
+	//if err != nil {
+	//	return fmt.Errorf("could not connect to docker: %w", err)
+	//}
+	//
+	//// pulls an image, creates a container based on it and runs it
+	//resource, err := pool.Run("postgres", "latest", []string{"POSTGRES_PASSWORD=secret"})
+	//if err != nil {
+	//	return fmt.Errorf("could not start resource: %w", err)
+	//}
+	//defer func() {
+	//	// You can't defer this because os.Exit doesn't care for defer
+	//	if err := pool.Purge(resource); err != nil {
+	//		log.Fatalf("Could not purge resource: %s", err)
+	//	}
+	//}()
+	//
+	//databaseDSN := fmt.Sprintf("postgres://postgres:secret@localhost:%s/postgres", resource.GetPort("5432/tcp"))
+	//// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
+	//err = pool.Retry(func() error {
+	//	var err error
+	//	db, err = sql.Open("pgx", databaseDSN)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	return db.Ping()
+	//})
+	//if err != nil {
+	//	return fmt.Errorf("could not connect to database: %w", err)
+	//}
+	//
+	//f(databaseDSN, db)
+
+	//return nil
 }
 
 func TestDBStorage_Delete(t *testing.T) {
