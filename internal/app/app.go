@@ -55,6 +55,12 @@ func Run(ctx context.Context, cfg config.EnvConfig) {
 			log.Println(err)
 		}
 	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		router.BatchDeleter.Start()
+		log.Println("Batch deleter stopped")
+	}()
 
 	<-srvCtx.Done()
 
