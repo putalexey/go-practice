@@ -3,15 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/putalexey/go-practicum/cmd/shortener/config"
+	"github.com/putalexey/go-practicum/internal/app"
 	"log"
 	"os"
 	"os/signal"
 	"runtime/pprof"
 	"sync"
 	"syscall"
-
-	"github.com/putalexey/go-practicum/cmd/shortener/config"
-	"github.com/putalexey/go-practicum/internal/app"
 )
 
 var buildVersion = "N/A"
@@ -38,21 +37,20 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	defer stop()
+
+	ctx, cancel := context.WithCancel(ctx)
 
 	finished := sync.WaitGroup{}
 	finished.Add(1)
 	go func() {
 		defer finished.Done()
 		app.Run(ctx, cfg)
+		cancel()
 	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	select {
-	case <-quit:
-	case <-ctx.Done():
-	}
+	<-ctx.Done()
 
 	log.Println("Shutting down server...")
 	cancel()

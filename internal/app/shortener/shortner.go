@@ -15,9 +15,10 @@ import (
 
 type Shortener struct {
 	*chi.Mux
-	domain  string
-	counter int64
-	storage storage.Storager
+	domain       string
+	counter      int64
+	storage      storage.Storager
+	BatchDeleter *storage.BatchDeleter
 }
 
 // NewRouter creates shortener router.
@@ -35,11 +36,11 @@ func NewRouter(ctx context.Context, baseURL string, store storage.Storager) *Sho
 		store = &storage.MemoryStorage{}
 	}
 	h := &Shortener{
-		Mux:     chi.NewMux(),
-		storage: store,
+		Mux:          chi.NewMux(),
+		storage:      store,
+		BatchDeleter: storage.NewBatchDeleterWithContext(ctx, store, 5),
 	}
 	urlGenerator := &urlgenerator.SequenceGenerator{BaseURL: baseURL}
-	batchDeleter := storage.NewBatchDeleterWithContext(ctx, store, 5)
 
 	h.Use(middleware.Logger)
 	h.Use(middleware.Recoverer)
@@ -56,7 +57,7 @@ func NewRouter(ctx context.Context, baseURL string, store storage.Storager) *Sho
 	h.Post("/api/shorten", handlers.JSONCreateShort(urlGenerator, store))
 	h.Post("/api/shorten/batch", handlers.JSONCreateShortBatch(urlGenerator, store))
 	h.Get("/api/user/urls", handlers.JSONGetShortsForCurrentUser(urlGenerator, store))
-	h.Delete("/api/user/urls", handlers.JSONDeleteUserShorts(store, batchDeleter))
+	h.Delete("/api/user/urls", handlers.JSONDeleteUserShorts(store, h.BatchDeleter))
 
 	h.Get("/swagger/*", httpSwagger.Handler(
 		httpSwagger.URL(baseURL+"/swagger/doc.json"),

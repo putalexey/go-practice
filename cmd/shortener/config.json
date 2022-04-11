@@ -1,0 +1,6 @@
+{
+  "server_address": "localhost:80",
+  "base_url": "http://127.0.0.1",
+  "cert_file": "",
+  "cert_key_file": ""
+}

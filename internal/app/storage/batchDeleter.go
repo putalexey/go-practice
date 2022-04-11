@@ -23,6 +23,7 @@ type BatchDeleter struct {
 	bufferSize int
 	ticker     *time.Ticker
 	ctx        context.Context
+	stop       bool
 }
 
 func NewBatchDeleterWithContext(ctx context.Context, store Storager, bufferSize int) *BatchDeleter {
@@ -36,9 +37,8 @@ func NewBatchDeleterWithContext(ctx context.Context, store Storager, bufferSize 
 		inputChan:  make(chan DeleteTask, bufferSize),
 		ticker:     time.NewTicker(10 * time.Second),
 		ctx:        ctx,
+		stop:       false,
 	}
-
-	go deleter.Start()
 
 	return &deleter
 }
@@ -88,6 +88,9 @@ func (b *BatchDeleter) flushWorker() {
 		} else {
 			log.Println("DEBUG: nothing to flush")
 		}
+		if b.stop {
+			return
+		}
 	}
 }
 
@@ -135,7 +138,9 @@ func (b *BatchDeleter) Start() {
 			case <-b.ticker.C:
 				b.cond.Signal()
 			case <-b.ctx.Done():
+				b.stop = true
 				b.ticker.Stop()
+				b.cond.Signal()
 				return
 			}
 		}

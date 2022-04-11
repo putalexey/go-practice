@@ -41,11 +41,16 @@ func NewDBStorage(databaseDSN, migrationsDir string) (*DBStorage, error) {
 	if migrationsDir != "" {
 		err := goose.Up(db, migrationsDir)
 		if err != nil {
+			db.Close()
 			return nil, err
 		}
 	}
 
-	return storage, nil
+	return storage, db.Ping()
+}
+
+func (s *DBStorage) Close() error {
+	return s.db.Close()
 }
 
 func (s *DBStorage) Store(ctx context.Context, record Record) error {
@@ -83,6 +88,9 @@ func (s *DBStorage) Store(ctx context.Context, record Record) error {
 }
 
 func (s *DBStorage) StoreBatch(ctx context.Context, records []Record) error {
+	if len(records) == 0 {
+		return nil
+	}
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -90,7 +98,7 @@ func (s *DBStorage) StoreBatch(ctx context.Context, records []Record) error {
 	defer tx.Rollback()
 
 	insertSQL := fmt.Sprintf(`INSERT INTO %s ("short", "original", "user_id") VALUES ($1, $2, $3)`, recordsTableName)
-	insertStmt, err := s.db.Prepare(insertSQL)
+	insertStmt, err := tx.Prepare(insertSQL)
 	if err != nil {
 		return err
 	}
@@ -113,7 +121,7 @@ func (s *DBStorage) Load(ctx context.Context, short string) (Record, error) {
 	defer cancel()
 
 	r := Record{}
-	selectSQL := fmt.Sprintf("SELECT short, original, user_id, deleted from %s WHERE short = $1 LIMIT 1", recordsTableName)
+	selectSQL := fmt.Sprintf("SELECT short, original, user_id, deleted FROM %s WHERE short = $1 LIMIT 1", recordsTableName)
 	row := s.db.QueryRowContext(ctx, selectSQL, short)
 	err := row.Scan(&r.Short, &r.Full, &r.UserID, &r.Deleted)
 	if err != nil {
@@ -127,14 +135,17 @@ func (s *DBStorage) Load(ctx context.Context, short string) (Record, error) {
 }
 
 func (s *DBStorage) LoadBatch(ctx context.Context, shorts []string) ([]Record, error) {
+	recordList := make([]Record, 0)
+	if len(shorts) == 0 {
+		return recordList, nil
+	}
 	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()
 
 	shortsPlaceholderList, args := prepareSQLPlaceholders(1, shorts)
 	shortsPlaceholderCommaList := strings.Join(shortsPlaceholderList, ",")
 
-	recordList := make([]Record, 0)
-	selectSQL := fmt.Sprintf("SELECT short, original, user_id, deleted from %s WHERE short in (%s) and deleted = FALSE", recordsTableName, shortsPlaceholderCommaList)
+	selectSQL := fmt.Sprintf("SELECT short, original, user_id, deleted FROM %s WHERE short in (%s) and deleted = FALSE", recordsTableName, shortsPlaceholderCommaList)
 	rows, err := s.db.QueryContext(ctx, selectSQL, args...)
 	if err != nil {
 		return nil, err
@@ -161,7 +172,7 @@ func (s *DBStorage) LoadForUser(ctx context.Context, userID string) ([]Record, e
 	defer cancel()
 
 	recordList := make([]Record, 0)
-	selectSQL := fmt.Sprintf("SELECT short, original, user_id, deleted from %s WHERE user_id = $1 and deleted = FALSE", recordsTableName)
+	selectSQL := fmt.Sprintf("SELECT short, original, user_id, deleted FROM %s WHERE user_id = $1 and deleted = FALSE", recordsTableName)
 	rows, err := s.db.QueryContext(ctx, selectSQL, userID)
 	if err != nil {
 		return nil, err
@@ -187,7 +198,7 @@ func (s *DBStorage) Delete(ctx context.Context, short string) error {
 	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()
 
-	deleteSQL := fmt.Sprintf("DELETE FROM %s WHERE short = $1", recordsTableName)
+	deleteSQL := fmt.Sprintf("UPDATE %s SET deleted = TRUE WHERE short = $1", recordsTableName)
 	_, err := s.db.ExecContext(ctx, deleteSQL, short)
 	return err
 }
@@ -213,6 +224,9 @@ func (s *DBStorage) Ping(ctx context.Context) error {
 	return s.db.PingContext(ctx)
 }
 
+// prepareSQLPlaceholders create 2 arrays:
+// 1 - with placeholders with indexes starting from `startIndex`
+// 2 - with values for that placeholders
 func prepareSQLPlaceholders(startIndex int, values []string) ([]string, []interface{}) {
 	pIndex := startIndex
 	args := make([]interface{}, 0, len(values))
