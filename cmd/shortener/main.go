@@ -41,6 +41,7 @@ func main() {
 	defer stop()
 
 	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	finished := sync.WaitGroup{}
 	finished.Add(1)
@@ -49,11 +50,6 @@ func main() {
 		app.Run(ctx, cfg)
 		cancel()
 	}()
-
-	<-ctx.Done()
-
-	log.Println("Shutting down server...")
-	cancel()
 
 	finished.Wait()
 }

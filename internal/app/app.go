@@ -63,6 +63,7 @@ func Run(ctx context.Context, cfg config.EnvConfig) {
 	}()
 
 	<-srvCtx.Done()
+	log.Println("Shutting down server...")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
