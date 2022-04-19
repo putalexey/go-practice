@@ -13,7 +13,7 @@ func IPAccess(trustedSubnet string) func(next http.Handler) http.Handler {
 			var err error
 			trusted := false
 			if len(trustedSubnet) > 0 {
-				trusted, err = isIpTrusted(r.RemoteAddr, trustedSubnet)
+				trusted, err = isIPTrusted(r.RemoteAddr, trustedSubnet)
 				if err != nil {
 					log.Println(err)
 					w.WriteHeader(http.StatusInternalServerError)
@@ -33,7 +33,7 @@ func IPAccess(trustedSubnet string) func(next http.Handler) http.Handler {
 	}
 }
 
-func isIpTrusted(addr string, subnet string) (bool, error) {
+func isIPTrusted(addr string, subnet string) (bool, error) {
 	ip, _, err := net.SplitHostPort(addr)
 	if err != nil {
 		return false, err
