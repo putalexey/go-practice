@@ -448,7 +448,7 @@ func JSONInternalStats(storage storage.Storager) http.HandlerFunc {
 			return
 		}
 
-		stats := responses.InternalStatsResponse{urlsCount, usersCount}
+		stats := responses.InternalStatsResponse{URLs: urlsCount, Users: usersCount}
 
 		data, err := json.Marshal(stats)
 		if err != nil {
@@ -458,7 +458,7 @@ func JSONInternalStats(storage storage.Storager) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		_, err = w.Write(data)
+		w.Write(data)
 	}
 }
 
