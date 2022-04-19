@@ -33,7 +33,7 @@ func Run(ctx context.Context, cfg config.EnvConfig) {
 		log.Fatal(err)
 	}
 
-	router := shortener.NewRouter(ctx, cfg.BaseURL, store)
+	router := shortener.NewRouter(ctx, cfg.BaseURL, store, cfg.TrustedSubnet)
 	srv := http.Server{
 		Addr:    cfg.Address,
 		Handler: router,

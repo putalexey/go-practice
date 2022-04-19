@@ -31,7 +31,7 @@ type Shortener struct {
 // * {POST} /api/shorten/batch - shortens batch of urls
 // * {GET} /api/user/urls - get all shorten urls of the user
 // * {DELETE} /api/user/urls - delete some of the user's shortened urls
-func NewRouter(ctx context.Context, baseURL string, store storage.Storager) *Shortener {
+func NewRouter(ctx context.Context, baseURL string, store storage.Storager, trustedSubnet string) *Shortener {
 	if store == nil {
 		store = &storage.MemoryStorage{}
 	}
@@ -58,6 +58,10 @@ func NewRouter(ctx context.Context, baseURL string, store storage.Storager) *Sho
 	h.Post("/api/shorten/batch", handlers.JSONCreateShortBatch(urlGenerator, store))
 	h.Get("/api/user/urls", handlers.JSONGetShortsForCurrentUser(urlGenerator, store))
 	h.Delete("/api/user/urls", handlers.JSONDeleteUserShorts(store, h.BatchDeleter))
+	h.Group(func(r chi.Router) {
+		r.Use(appMiddleware.IPAccess(trustedSubnet))
+		r.Get("/api/internal/stats", handlers.JSONInternalStats(store))
+	})
 
 	h.Get("/swagger/*", httpSwagger.Handler(
 		httpSwagger.URL(baseURL+"/swagger/doc.json"),

@@ -18,6 +18,11 @@ type CreateShortBatchResponseItem struct {
 	ShortURL      string `json:"short_url"`
 }
 
+type InternalStatsResponse struct {
+	URLs  int `json:"urls"`  // количество сокращённых URL в сервисе
+	Users int `json:"users"` // количество пользователей в сервисе
+}
+
 type ErrorResponse struct {
 	Error string `json:"error" example:"Not found"`
 }

@@ -147,14 +147,14 @@ func TestMemoryStorage_Store(t *testing.T) {
 
 		records, err := store.LoadForUser(ctx, "testUser")
 		assert.NoError(t, err)
-		assert.Len(t, records, 1)
+		assert.Len(t, records, 2)
 
 		err = store.Store(ctx, Record{"test2", "http://example.com/testme2", "testUser", false})
 		assert.NoError(t, err)
 
 		records, err = store.LoadForUser(ctx, "testUser")
 		assert.NoError(t, err)
-		assert.Len(t, records, 2)
+		assert.Len(t, records, 3)
 	})
 
 	t.Run("not return other user's shorts", func(t *testing.T) {
@@ -166,7 +166,7 @@ func TestMemoryStorage_Store(t *testing.T) {
 
 		records, err := store.LoadForUser(ctx, "testUser")
 		assert.NoError(t, err)
-		assert.Len(t, records, 1)
+		assert.Len(t, records, 2)
 
 		records, err = store.LoadForUser(ctx, "testUser2")
 		require.NoError(t, err)
@@ -191,6 +191,16 @@ func defaultRecords() RecordMap {
 			Full:   "http://example.com/testme",
 			UserID: "testUser",
 		},
+		"test8": Record{
+			Short:  "test8",
+			Full:   "http://example.com/testme8",
+			UserID: "testUser",
+		},
+		"test9": Record{
+			Short:  "test9",
+			Full:   "http://example.com/testme9",
+			UserID: "testUser9",
+		},
 	}
 }
 
@@ -214,4 +224,67 @@ func TestNewMemoryStorage(t *testing.T) {
 			assert.Equalf(t, tt.want, NewMemoryStorage(tt.args.records), "NewMemoryStorage(%v)", tt.args.records)
 		})
 	}
+}
+
+func TestMemoryStorage_Counts(t *testing.T) {
+	ctx := context.Background()
+	t.Run("returns shorts total count", func(t *testing.T) {
+		store := &MemoryStorage{records: defaultRecords()}
+
+		count, err := store.CountURLs(ctx)
+		assert.NoError(t, err)
+		assert.NotNil(t, count)
+		assert.Equal(t, 3, count)
+	})
+	t.Run("shorts total count increases on adding new item", func(t *testing.T) {
+		store := &MemoryStorage{records: defaultRecords()}
+
+		count, err := store.CountURLs(ctx)
+		assert.NoError(t, err)
+		assert.NotNil(t, count)
+		assert.Equal(t, 3, count)
+
+		err = store.Store(ctx, Record{
+			Short:   "some_new",
+			Full:    "https://localhost",
+			UserID:  "test10",
+			Deleted: false,
+		})
+		assert.NoError(t, err)
+
+		count, err = store.CountURLs(ctx)
+		assert.NoError(t, err)
+		assert.NotNil(t, count)
+		assert.Equal(t, 4, count)
+	})
+
+	t.Run("returns users total count", func(t *testing.T) {
+		store := &MemoryStorage{records: defaultRecords()}
+
+		count, err := store.CountUsers(ctx)
+		assert.NoError(t, err)
+		assert.NotNil(t, count)
+		assert.Equal(t, 2, count)
+	})
+	t.Run("users total count increases on adding item with new user", func(t *testing.T) {
+		store := &MemoryStorage{records: defaultRecords()}
+
+		count, err := store.CountUsers(ctx)
+		assert.NoError(t, err)
+		assert.NotNil(t, count)
+		assert.Equal(t, 2, count)
+
+		err = store.Store(ctx, Record{
+			Short:   "some_new",
+			Full:    "https://localhost",
+			UserID:  "test10",
+			Deleted: false,
+		})
+		assert.NoError(t, err)
+
+		count, err = store.CountUsers(ctx)
+		assert.NoError(t, err)
+		assert.NotNil(t, count)
+		assert.Equal(t, 3, count)
+	})
 }

@@ -38,4 +38,6 @@ type Storager interface {
 	Delete(ctx context.Context, short string) error
 	DeleteBatch(ctx context.Context, shorts []string) error
 	Ping(ctx context.Context) error
+	CountURLs(ctx context.Context) (int, error)
+	CountUsers(ctx context.Context) (int, error)
 }

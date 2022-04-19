@@ -240,3 +240,27 @@ func prepareSQLPlaceholders(startIndex int, values []string) ([]string, []interf
 
 	return shortsPlaceholderList, args
 }
+
+func (s *DBStorage) CountURLs(ctx context.Context) (int, error) {
+	countURLs := 0
+	selectSQL := fmt.Sprintf("SELECT count(*) as cnt FROM %s WHERE deleted = FALSE", recordsTableName)
+	row := s.db.QueryRowContext(ctx, selectSQL)
+	err := row.Scan(&countURLs)
+	if err != nil {
+		return 0, err
+	}
+
+	return countURLs, nil
+}
+
+func (s *DBStorage) CountUsers(ctx context.Context) (int, error) {
+	countUsers := 0
+	selectSQL := fmt.Sprintf("SELECT count(distinct user_id) as cnt FROM %s WHERE deleted = FALSE", recordsTableName)
+	row := s.db.QueryRowContext(ctx, selectSQL)
+	err := row.Scan(&countUsers)
+	if err != nil {
+		return 0, err
+	}
+
+	return countUsers, nil
+}

@@ -426,10 +426,46 @@ func JSONDeleteUserShorts(_ storage.Storager, batchDeleter *storage.BatchDeleter
 	}
 }
 
+// JSONInternalStats godoc
+// @Summary	Shows service stats, accessible only from trusted IP networks
+// @Produce	json
+// @Success	200	{object}	responses.InternalStatsResponse	"Stats of the service"
+// @Failure	403	{object}	responses.ErrorResponse
+// @Failure	500	{object}	responses.ErrorResponse
+// @Router	/api/internal/stats	[get]
+func JSONInternalStats(storage storage.Storager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		urlsCount, err := storage.CountURLs(r.Context())
+		if err != nil {
+			log.Println("ERROR:", err)
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		usersCount, err := storage.CountUsers(r.Context())
+		if err != nil {
+			log.Println("ERROR:", err)
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		stats := responses.InternalStatsResponse{urlsCount, usersCount}
+
+		data, err := json.Marshal(stats)
+		if err != nil {
+			log.Println("ERROR:", err)
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_, err = w.Write(data)
+	}
+}
+
 // BadRequestHandler handles requests to route with method not supported by route
 func BadRequestHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, "Method not found", http.StatusBadRequest)
 	}
 }
 

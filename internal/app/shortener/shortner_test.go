@@ -119,7 +119,7 @@ func TestShortener_Base(t *testing.T) {
 			request := httptest.NewRequest(tt.request.method, tt.request.target, requestBody)
 			w := httptest.NewRecorder()
 
-			s := NewRouter(context.Background(), "localhost:8080", storage.NewMemoryStorage(tt.shorts))
+			s := NewRouter(context.Background(), "localhost:8080", storage.NewMemoryStorage(tt.shorts), "")
 			s.ServeHTTP(w, request)
 
 			result := w.Result()
@@ -206,7 +206,7 @@ func TestShortener_JSONCreateFails(t *testing.T) {
 			request := httptest.NewRequest(tt.request.method, tt.request.target, requestBody)
 			w := httptest.NewRecorder()
 
-			s := NewRouter(context.Background(), "localhost:8080", storage.NewMemoryStorage(tt.shorts))
+			s := NewRouter(context.Background(), "localhost:8080", storage.NewMemoryStorage(tt.shorts), "")
 			s.ServeHTTP(w, request)
 
 			result := w.Result()
@@ -235,7 +235,7 @@ func TestShortener_JSONCreates(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, "/api/shorten", requestBody)
 		w := httptest.NewRecorder()
 
-		s := NewRouter(context.Background(), "localhost:8080", nil)
+		s := NewRouter(context.Background(), "localhost:8080", nil, "")
 		s.ServeHTTP(w, request)
 
 		result := w.Result()
@@ -259,7 +259,7 @@ func TestShortener_JSONCreates(t *testing.T) {
 
 func TestShortener_NewRouter(t *testing.T) {
 	t.Run("default router storage is MemoryStorage ", func(t *testing.T) {
-		s := NewRouter(context.Background(), "localhost:8080", nil)
+		s := NewRouter(context.Background(), "localhost:8080", nil, "")
 		assert.IsType(t, &storage.MemoryStorage{}, s.storage)
 	})
 }
@@ -269,7 +269,7 @@ func BenchmarkRouter(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	router := NewRouter(context.Background(), "localhost:8080", store)
+	router := NewRouter(context.Background(), "localhost:8080", store, "")
 	urls := make([]string, b.N)
 	for i := range urls {
 		urls[i] = randomURL()

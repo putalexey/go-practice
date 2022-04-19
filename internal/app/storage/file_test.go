@@ -16,7 +16,11 @@ func resetFileContents(t *testing.T, tempfilepath string) {
 	require.NoError(t, err)
 }
 
-var testData = []byte("{\"short\":\"test\",\"full\":\"http://example.com/testme\",\"user_id\":\"testUser\"}")
+var testData = []byte(
+	"{\"short\":\"test\",\"full\":\"http://example.com/testme\",\"user_id\":\"testUser\"}" +
+		"{\"short\":\"test8\",\"full\":\"http://example.com/testme8\",\"user_id\":\"testUser\"}" +
+		"{\"short\":\"test9\",\"full\":\"http://example.com/testme9\",\"user_id\":\"testUser9\"}",
+)
 
 func TestFileStorage(t *testing.T) {
 	ctx := context.Background()
@@ -128,7 +132,7 @@ func TestFileStorage(t *testing.T) {
 
 		records, err := store.LoadForUser(ctx, "testUser")
 		assert.NoError(t, err)
-		assert.Len(t, records, 1)
+		assert.Len(t, records, 2)
 
 		r, err := NewRecord("http://example.com/testme2", "testUser")
 		require.NoError(t, err)
@@ -138,7 +142,7 @@ func TestFileStorage(t *testing.T) {
 
 		records, err = store.LoadForUser(ctx, "testUser")
 		require.NoError(t, err)
-		assert.Len(t, records, 2)
+		assert.Len(t, records, 3)
 	})
 
 	t.Run("not return other user's shorts", func(t *testing.T) {
@@ -160,7 +164,7 @@ func TestFileStorage(t *testing.T) {
 
 		records, err := store.LoadForUser(ctx, "testUser")
 		assert.NoError(t, err)
-		assert.Len(t, records, 1)
+		assert.Len(t, records, 2)
 
 		records, err = store.LoadForUser(ctx, "testUser2")
 		assert.NoError(t, err)
@@ -209,4 +213,82 @@ func GetFilePath() string {
 		randString += strconv.Itoa(int(rand.Intn(10)))
 	}
 	return os.TempDir() + "/testfile_" + randString
+}
+
+func TestFileStorage_Counts(t *testing.T) {
+	ctx := context.Background()
+	tempfilepath := GetFilePath()
+	defer os.Remove(tempfilepath)
+
+	t.Run("returns shorts total count", func(t *testing.T) {
+		resetFileContents(t, tempfilepath)
+		store, err := NewFileStorage(tempfilepath)
+		assert.NoError(t, err)
+		assert.NotNil(t, store)
+
+		count, err := store.CountURLs(ctx)
+		assert.NoError(t, err)
+		assert.NotNil(t, count)
+		assert.Equal(t, 3, count)
+	})
+	t.Run("shorts total count increases on adding new item", func(t *testing.T) {
+		resetFileContents(t, tempfilepath)
+		store, err := NewFileStorage(tempfilepath)
+		assert.NoError(t, err)
+		assert.NotNil(t, store)
+
+		count, err := store.CountURLs(ctx)
+		assert.NoError(t, err)
+		assert.NotNil(t, count)
+		assert.Equal(t, 3, count)
+
+		err = store.Store(ctx, Record{
+			Short:   "some_new",
+			Full:    "https://localhost",
+			UserID:  "test10",
+			Deleted: false,
+		})
+		assert.NoError(t, err)
+
+		count, err = store.CountURLs(ctx)
+		assert.NoError(t, err)
+		assert.NotNil(t, count)
+		assert.Equal(t, 4, count)
+	})
+
+	t.Run("returns users total count", func(t *testing.T) {
+		resetFileContents(t, tempfilepath)
+		store, err := NewFileStorage(tempfilepath)
+		assert.NoError(t, err)
+		assert.NotNil(t, store)
+
+		count, err := store.CountUsers(ctx)
+		assert.NoError(t, err)
+		assert.NotNil(t, count)
+		assert.Equal(t, 2, count)
+	})
+	t.Run("users total count increases on adding item with new user", func(t *testing.T) {
+		resetFileContents(t, tempfilepath)
+		store, err := NewFileStorage(tempfilepath)
+		assert.NoError(t, err)
+		assert.NotNil(t, store)
+
+		count, err := store.CountUsers(ctx)
+		assert.NoError(t, err)
+		assert.NotNil(t, count)
+		assert.Equal(t, 2, count)
+
+		err = store.Store(ctx, Record{
+			Short:   "some_new",
+			Full:    "https://localhost",
+			UserID:  "test10",
+			Deleted: false,
+		})
+		assert.NoError(t, err)
+
+		count, err = store.CountUsers(ctx)
+		assert.NoError(t, err)
+		assert.NotNil(t, count)
+		assert.Equal(t, 3, count)
+	})
 }
