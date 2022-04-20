@@ -435,22 +435,16 @@ func JSONDeleteUserShorts(_ storage.Storager, batchDeleter *storage.BatchDeleter
 // @Router	/api/internal/stats	[get]
 func JSONInternalStats(storage storage.Storager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		urlsCount, err := storage.CountURLs(r.Context())
-		if err != nil {
-			log.Println("ERROR:", err)
-			jsonError(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		usersCount, err := storage.CountUsers(r.Context())
+		stats, err := storage.GetStats(r.Context())
 		if err != nil {
 			log.Println("ERROR:", err)
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		stats := responses.InternalStatsResponse{URLs: urlsCount, Users: usersCount}
+		response := responses.InternalStatsResponse{URLs: stats.URLsCount, Users: stats.UsersCount}
 
-		data, err := json.Marshal(stats)
+		data, err := json.Marshal(response)
 		if err != nil {
 			log.Println("ERROR:", err)
 			jsonError(w, err.Error(), http.StatusInternalServerError)

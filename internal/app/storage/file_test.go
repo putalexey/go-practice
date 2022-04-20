@@ -226,10 +226,10 @@ func TestFileStorage_Counts(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, store)
 
-		count, err := store.CountURLs(ctx)
+		stats, err := store.GetStats(ctx)
 		assert.NoError(t, err)
-		assert.NotNil(t, count)
-		assert.Equal(t, 3, count)
+		assert.NotNil(t, stats.URLsCount)
+		assert.Equal(t, 3, stats.URLsCount)
 	})
 	t.Run("shorts total count increases on adding new item", func(t *testing.T) {
 		resetFileContents(t, tempfilepath)
@@ -237,10 +237,10 @@ func TestFileStorage_Counts(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, store)
 
-		count, err := store.CountURLs(ctx)
+		stats, err := store.GetStats(ctx)
 		assert.NoError(t, err)
-		assert.NotNil(t, count)
-		assert.Equal(t, 3, count)
+		assert.NotNil(t, stats.URLsCount)
+		assert.Equal(t, 3, stats.URLsCount)
 
 		err = store.Store(ctx, Record{
 			Short:   "some_new",
@@ -250,10 +250,10 @@ func TestFileStorage_Counts(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		count, err = store.CountURLs(ctx)
+		stats, err = store.GetStats(ctx)
 		assert.NoError(t, err)
-		assert.NotNil(t, count)
-		assert.Equal(t, 4, count)
+		assert.NotNil(t, stats.URLsCount)
+		assert.Equal(t, 4, stats.URLsCount)
 	})
 
 	t.Run("returns users total count", func(t *testing.T) {
@@ -262,10 +262,10 @@ func TestFileStorage_Counts(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, store)
 
-		count, err := store.CountUsers(ctx)
+		stats, err := store.GetStats(ctx)
 		assert.NoError(t, err)
-		assert.NotNil(t, count)
-		assert.Equal(t, 2, count)
+		assert.NotNil(t, stats.UsersCount)
+		assert.Equal(t, 2, stats.UsersCount)
 	})
 	t.Run("users total count increases on adding item with new user", func(t *testing.T) {
 		resetFileContents(t, tempfilepath)
@@ -273,10 +273,10 @@ func TestFileStorage_Counts(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, store)
 
-		count, err := store.CountUsers(ctx)
+		stats, err := store.GetStats(ctx)
 		assert.NoError(t, err)
-		assert.NotNil(t, count)
-		assert.Equal(t, 2, count)
+		assert.NotNil(t, stats.UsersCount)
+		assert.Equal(t, 2, stats.UsersCount)
 
 		err = store.Store(ctx, Record{
 			Short:   "some_new",
@@ -286,9 +286,9 @@ func TestFileStorage_Counts(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		count, err = store.CountUsers(ctx)
+		stats, err = store.GetStats(ctx)
 		assert.NoError(t, err)
-		assert.NotNil(t, count)
-		assert.Equal(t, 3, count)
+		assert.NotNil(t, stats.UsersCount)
+		assert.Equal(t, 3, stats.UsersCount)
 	})
 }

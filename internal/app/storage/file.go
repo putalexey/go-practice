@@ -162,16 +162,24 @@ func (s *FileStorage) saveToFile() error {
 	return nil
 }
 
-func (s *FileStorage) CountURLs(_ context.Context) (int, error) {
-	return len(s.records), nil
+func (s *FileStorage) GetStats(ctx context.Context) (*ServiceStats, error) {
+	stats := ServiceStats{
+		URLsCount:  s.countURLs(ctx),
+		UsersCount: s.countUsers(ctx),
+	}
+	return &stats, nil
 }
 
-func (s *FileStorage) CountUsers(_ context.Context) (int, error) {
+func (s *FileStorage) countURLs(_ context.Context) int {
+	return len(s.records)
+}
+
+func (s *FileStorage) countUsers(_ context.Context) int {
 	usersID := make(map[string]bool)
 	for _, record := range s.records {
 		if _, ok := usersID[record.UserID]; !ok {
 			usersID[record.UserID] = true
 		}
 	}
-	return len(usersID), nil
+	return len(usersID)
 }
