@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/putalexey/go-practicum/internal/app/urlgenerator"
 	"io"
 	"math/rand"
 	"net/http"
@@ -119,7 +120,11 @@ func TestShortener_Base(t *testing.T) {
 			request := httptest.NewRequest(tt.request.method, tt.request.target, requestBody)
 			w := httptest.NewRecorder()
 
-			s := NewRouter(context.Background(), "localhost:8080", storage.NewMemoryStorage(tt.shorts), "")
+			store := storage.NewMemoryStorage(tt.shorts)
+			baseURL := "localhost:8080"
+			batchDeleter := storage.NewBatchDeleterWithContext(context.Background(), store, 5)
+			urlGenerator := &urlgenerator.SequenceGenerator{BaseURL: baseURL}
+			s := NewRouter(context.Background(), baseURL, store, "", urlGenerator, batchDeleter)
 			s.ServeHTTP(w, request)
 
 			result := w.Result()
@@ -206,7 +211,11 @@ func TestShortener_JSONCreateFails(t *testing.T) {
 			request := httptest.NewRequest(tt.request.method, tt.request.target, requestBody)
 			w := httptest.NewRecorder()
 
-			s := NewRouter(context.Background(), "localhost:8080", storage.NewMemoryStorage(tt.shorts), "")
+			store := storage.NewMemoryStorage(tt.shorts)
+			baseURL := "localhost:8080"
+			batchDeleter := storage.NewBatchDeleterWithContext(context.Background(), store, 5)
+			urlGenerator := &urlgenerator.SequenceGenerator{BaseURL: baseURL}
+			s := NewRouter(context.Background(), baseURL, store, "", urlGenerator, batchDeleter)
 			s.ServeHTTP(w, request)
 
 			result := w.Result()
@@ -235,7 +244,11 @@ func TestShortener_JSONCreates(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, "/api/shorten", requestBody)
 		w := httptest.NewRecorder()
 
-		s := NewRouter(context.Background(), "localhost:8080", nil, "")
+		store := storage.NewMemoryStorage(storage.RecordMap{})
+		baseURL := "localhost:8080"
+		batchDeleter := storage.NewBatchDeleterWithContext(context.Background(), store, 5)
+		urlGenerator := &urlgenerator.SequenceGenerator{BaseURL: baseURL}
+		s := NewRouter(context.Background(), "localhost:8080", store, "", urlGenerator, batchDeleter)
 		s.ServeHTTP(w, request)
 
 		result := w.Result()
@@ -259,7 +272,11 @@ func TestShortener_JSONCreates(t *testing.T) {
 
 func TestShortener_NewRouter(t *testing.T) {
 	t.Run("default router storage is MemoryStorage ", func(t *testing.T) {
-		s := NewRouter(context.Background(), "localhost:8080", nil, "")
+		store := storage.NewMemoryStorage(storage.RecordMap{})
+		baseURL := "localhost:8080"
+		batchDeleter := storage.NewBatchDeleterWithContext(context.Background(), store, 5)
+		urlGenerator := &urlgenerator.SequenceGenerator{BaseURL: baseURL}
+		s := NewRouter(context.Background(), "localhost:8080", store, "", urlGenerator, batchDeleter)
 		assert.IsType(t, &storage.MemoryStorage{}, s.storage)
 	})
 }
@@ -269,7 +286,11 @@ func BenchmarkRouter(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	router := NewRouter(context.Background(), "localhost:8080", store, "")
+
+	baseURL := "localhost:8080"
+	batchDeleter := storage.NewBatchDeleterWithContext(context.Background(), store, 5)
+	urlGenerator := &urlgenerator.SequenceGenerator{BaseURL: baseURL}
+	router := NewRouter(context.Background(), baseURL, store, "", urlGenerator, batchDeleter)
 	urls := make([]string, b.N)
 	for i := range urls {
 		urls[i] = randomURL()

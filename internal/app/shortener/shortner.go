@@ -31,16 +31,22 @@ type Shortener struct {
 // * {POST} /api/shorten/batch - shortens batch of urls
 // * {GET} /api/user/urls - get all shorten urls of the user
 // * {DELETE} /api/user/urls - delete some of the user's shortened urls
-func NewRouter(ctx context.Context, baseURL string, store storage.Storager, trustedSubnet string) *Shortener {
+func NewRouter(
+	ctx context.Context,
+	baseURL string,
+	store storage.Storager,
+	trustedSubnet string,
+	urlGenerator urlgenerator.URLGenerator,
+	batchDeleter *storage.BatchDeleter,
+) *Shortener {
 	if store == nil {
 		store = &storage.MemoryStorage{}
 	}
 	h := &Shortener{
 		Mux:          chi.NewMux(),
 		storage:      store,
-		BatchDeleter: storage.NewBatchDeleterWithContext(ctx, store, 5),
+		BatchDeleter: batchDeleter,
 	}
-	urlGenerator := &urlgenerator.SequenceGenerator{BaseURL: baseURL}
 
 	h.Use(middleware.Logger)
 	h.Use(middleware.Recoverer)
