@@ -124,7 +124,7 @@ func TestShortener_Base(t *testing.T) {
 			baseURL := "localhost:8080"
 			batchDeleter := storage.NewBatchDeleterWithContext(context.Background(), store, 5)
 			urlGenerator := &urlgenerator.SequenceGenerator{BaseURL: baseURL}
-			s := NewRouter(context.Background(), baseURL, store, "", urlGenerator, batchDeleter)
+			s := NewRouter(baseURL, store, "", urlGenerator, batchDeleter)
 			s.ServeHTTP(w, request)
 
 			result := w.Result()
@@ -215,7 +215,7 @@ func TestShortener_JSONCreateFails(t *testing.T) {
 			baseURL := "localhost:8080"
 			batchDeleter := storage.NewBatchDeleterWithContext(context.Background(), store, 5)
 			urlGenerator := &urlgenerator.SequenceGenerator{BaseURL: baseURL}
-			s := NewRouter(context.Background(), baseURL, store, "", urlGenerator, batchDeleter)
+			s := NewRouter(baseURL, store, "", urlGenerator, batchDeleter)
 			s.ServeHTTP(w, request)
 
 			result := w.Result()
@@ -248,7 +248,7 @@ func TestShortener_JSONCreates(t *testing.T) {
 		baseURL := "localhost:8080"
 		batchDeleter := storage.NewBatchDeleterWithContext(context.Background(), store, 5)
 		urlGenerator := &urlgenerator.SequenceGenerator{BaseURL: baseURL}
-		s := NewRouter(context.Background(), "localhost:8080", store, "", urlGenerator, batchDeleter)
+		s := NewRouter("localhost:8080", store, "", urlGenerator, batchDeleter)
 		s.ServeHTTP(w, request)
 
 		result := w.Result()
@@ -276,7 +276,7 @@ func TestShortener_NewRouter(t *testing.T) {
 		baseURL := "localhost:8080"
 		batchDeleter := storage.NewBatchDeleterWithContext(context.Background(), store, 5)
 		urlGenerator := &urlgenerator.SequenceGenerator{BaseURL: baseURL}
-		s := NewRouter(context.Background(), "localhost:8080", store, "", urlGenerator, batchDeleter)
+		s := NewRouter("localhost:8080", store, "", urlGenerator, batchDeleter)
 		assert.IsType(t, &storage.MemoryStorage{}, s.storage)
 	})
 }
@@ -290,7 +290,7 @@ func BenchmarkRouter(b *testing.B) {
 	baseURL := "localhost:8080"
 	batchDeleter := storage.NewBatchDeleterWithContext(context.Background(), store, 5)
 	urlGenerator := &urlgenerator.SequenceGenerator{BaseURL: baseURL}
-	router := NewRouter(context.Background(), baseURL, store, "", urlGenerator, batchDeleter)
+	router := NewRouter(baseURL, store, "", urlGenerator, batchDeleter)
 	urls := make([]string, b.N)
 	for i := range urls {
 		urls[i] = randomURL()
