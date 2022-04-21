@@ -1,8 +1,6 @@
 package shortener
 
 import (
-	"context"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -18,7 +16,7 @@ type Shortener struct {
 	domain       string
 	counter      int64
 	storage      storage.Storager
-	BatchDeleter *storage.BatchDeleter
+	BatchDeleter storage.BatchDeleter
 }
 
 // NewRouter creates shortener router.
@@ -32,12 +30,11 @@ type Shortener struct {
 // * {GET} /api/user/urls - get all shorten urls of the user
 // * {DELETE} /api/user/urls - delete some of the user's shortened urls
 func NewRouter(
-	ctx context.Context,
 	baseURL string,
 	store storage.Storager,
 	trustedSubnet string,
 	urlGenerator urlgenerator.URLGenerator,
-	batchDeleter *storage.BatchDeleter,
+	batchDeleter storage.BatchDeleter,
 ) *Shortener {
 	if store == nil {
 		store = &storage.MemoryStorage{}

@@ -5,10 +5,9 @@ option go_package = "github.com/putalexey/go-practicum/internal/app/proto";
 package grpc;
 
 message Short {
-  string short = 1;
-  string full = 2;
+  string short_url = 1;
+  string original_url = 2;
   string user_id = 3;
-  bool deleted = 4;
 }
 
 message CreateShortRequest {
@@ -17,15 +16,20 @@ message CreateShortRequest {
 }
 
 message CreateShortResponse {
-  Short short = 1;
-  string error = 2;
+  enum Status {
+    Unknown = 0;
+    Created = 1;
+    Conflict = 2;
+  }
+  Status status = 1;
+  Short short = 2;
 }
 
 
 message CreateShortBatchRequest {
   message CreateShortBatchItem {
-    string correlationID = 1;
-    string originalURL = 2;
+    string correlation_id = 1;
+    string original_url = 2;
   }
 
   string user_id = 1;
@@ -39,7 +43,6 @@ message CreateShortBatchResponse {
   }
 
   repeated CreateShortBatchResponseItem results = 1;
-  string error = 2;
 }
 
 
@@ -49,7 +52,6 @@ message DeleteShortBatchRequest {
 }
 
 message DeleteShortBatchResponse {
-  string error = 1;
 }
 
 
@@ -59,13 +61,11 @@ message ListShortsRequest {
 
 message ListShortsResponse {
   repeated Short shorts = 1;
-  string error = 2;
 }
 
 message InternalStatsResponse {
 	int32 urls_count = 1;   // количество сокращённых URL в сервисе
 	int32 users_count = 2; // количество пользователей в сервисе
-  string error = 3;
 }
 
 message Empty {}

@@ -38,7 +38,6 @@ func Run(ctx context.Context, cfg config.EnvConfig) {
 	urlGenerator := &urlgenerator.SequenceGenerator{BaseURL: cfg.BaseURL}
 
 	router := shortener.NewRouter(
-		ctx,
 		cfg.BaseURL,
 		store,
 		cfg.TrustedSubnet,
@@ -49,10 +48,7 @@ func Run(ctx context.Context, cfg config.EnvConfig) {
 		Addr:    cfg.Address,
 		Handler: router,
 	}
-	grpcServer, err := grpc.NewGRPCShortener(ctx, cfg.BaseURL, store, urlGenerator, batchDeleter)
-	if err != nil {
-		log.Fatal(err)
-	}
+	grpcServer := grpc.NewGRPCShortener(ctx, store, urlGenerator, batchDeleter)
 
 	srvCtx, srvCancel := context.WithCancel(ctx)
 	wg := sync.WaitGroup{}

@@ -4,6 +4,8 @@ proto:
 sort_imports:
 	goimports -w -local github.com/putalexey ./cmd/ ./internal/
 
+build:
+	cd cmd/shortener/; go build -o shortener
 #docs:
 #	cd internal/app/shortener/
 #	swag init -g ./shortner.go

@@ -9,7 +9,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/pressly/goose/v3 v3.5.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 	github.com/swaggo/http-swagger v1.2.5
 	github.com/swaggo/swag v1.8.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
@@ -35,6 +35,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
+	github.com/stretchr/objx v0.1.1 // indirect
 	github.com/swaggo/files v0.0.0-20210815190702-a29dd2bc99b2 // indirect
 	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3 // indirect
 	golang.org/x/net v0.0.0-20220420153159-1850ba15e1be // indirect

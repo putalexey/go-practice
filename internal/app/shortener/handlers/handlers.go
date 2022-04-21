@@ -371,7 +371,7 @@ func JSONGetShortsForCurrentUser(generator urlgenerator.URLGenerator, storage st
 // @Failure	400	{object}	responses.ErrorResponse
 // @Failure	500	{object}	responses.ErrorResponse
 // @Router	/api/user/urls	[delete]
-func JSONDeleteUserShorts(_ storage.Storager, batchDeleter *storage.BatchDeleter) http.HandlerFunc {
+func JSONDeleteUserShorts(_ storage.Storager, batchDeleter storage.BatchDeleter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		defer r.Body.Close()
