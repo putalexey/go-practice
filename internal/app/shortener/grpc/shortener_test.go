@@ -20,7 +20,7 @@ func makeStore(fs ...func(*storageTesting.MockStorager)) *storageTesting.MockSto
 	return m
 }
 
-func makeUrlGenerator() urlgenerator.URLGenerator {
+func makeURLGenerator() urlgenerator.URLGenerator {
 	return &urlgenerator.SequenceGenerator{BaseURL: "http://localhost"}
 }
 
@@ -36,7 +36,7 @@ func TestNewGRPCShortener(t *testing.T) {
 	ctx := context.Background()
 	t.Run("creates grpc server", func(t *testing.T) {
 		store := makeStore()
-		urlGenerator := makeUrlGenerator()
+		urlGenerator := makeURLGenerator()
 		batchDeleter := makeBatchDeleter()
 		server := NewGRPCShortener(ctx, store, urlGenerator, batchDeleter)
 		if server == nil {
@@ -69,7 +69,7 @@ func TestShortenerGRPCServer_CreateShort(t *testing.T) {
 					m.On("Store", mock.Anything, mock.Anything).
 						Return(nil)
 				}),
-				urlGenerator: makeUrlGenerator(),
+				urlGenerator: makeURLGenerator(),
 				batchDeleter: makeBatchDeleter(),
 			},
 			args: args{in: &proto.CreateShortRequest{
@@ -98,7 +98,7 @@ func TestShortenerGRPCServer_CreateShort(t *testing.T) {
 							Deleted: false,
 						}))
 				}),
-				urlGenerator: makeUrlGenerator(),
+				urlGenerator: makeURLGenerator(),
 				batchDeleter: makeBatchDeleter(),
 			},
 			args: args{in: &proto.CreateShortRequest{
@@ -160,7 +160,7 @@ func TestShortenerGRPCServer_CreateShortBatch(t *testing.T) {
 					m.On("StoreBatch", mock.Anything, mock.Anything).
 						Return(nil)
 				}),
-				urlGenerator: makeUrlGenerator(),
+				urlGenerator: makeURLGenerator(),
 				batchDeleter: makeBatchDeleter(),
 			},
 			args: args{in: &proto.CreateShortBatchRequest{
@@ -199,7 +199,7 @@ func TestShortenerGRPCServer_CreateShortBatch(t *testing.T) {
 					m.On("StoreBatch", mock.Anything, mock.Anything).
 						Return(errors.New("failed"))
 				}),
-				urlGenerator: makeUrlGenerator(),
+				urlGenerator: makeURLGenerator(),
 				batchDeleter: makeBatchDeleter(),
 			},
 			args: args{in: &proto.CreateShortBatchRequest{
@@ -216,7 +216,7 @@ func TestShortenerGRPCServer_CreateShortBatch(t *testing.T) {
 			name: "returns error, when trying to add invalid url",
 			fields: fields{
 				store:        makeStore(),
-				urlGenerator: makeUrlGenerator(),
+				urlGenerator: makeURLGenerator(),
 				batchDeleter: makeBatchDeleter(),
 			},
 			args: args{in: &proto.CreateShortBatchRequest{
@@ -236,7 +236,7 @@ func TestShortenerGRPCServer_CreateShortBatch(t *testing.T) {
 					m.On("StoreBatch", mock.Anything, mock.Anything).
 						Return(errors.New("failed"))
 				}),
-				urlGenerator: makeUrlGenerator(),
+				urlGenerator: makeURLGenerator(),
 				batchDeleter: makeBatchDeleter(),
 			},
 			args: args{in: &proto.CreateShortBatchRequest{
@@ -302,7 +302,7 @@ func TestShortenerGRPCServer_DeleteUserShorts(t *testing.T) {
 			name: "queues deleting",
 			fields: fields{
 				store:        makeStore(),
-				urlGenerator: makeUrlGenerator(),
+				urlGenerator: makeURLGenerator(),
 				batchDeleter: makeBatchDeleter(func(m *storageTesting.MockBatchDeleter) {
 					m.On("QueueItems", mock.Anything, mock.Anything).Return()
 				}),
@@ -364,7 +364,7 @@ func TestShortenerGRPCServer_GetShortsForCurrentUser(t *testing.T) {
 							nil,
 						)
 				}),
-				urlGenerator: makeUrlGenerator(),
+				urlGenerator: makeURLGenerator(),
 				batchDeleter: makeBatchDeleter(),
 			},
 			args: args{
@@ -389,7 +389,7 @@ func TestShortenerGRPCServer_GetShortsForCurrentUser(t *testing.T) {
 							errors.New("failed"),
 						)
 				}),
-				urlGenerator: makeUrlGenerator(),
+				urlGenerator: makeURLGenerator(),
 				batchDeleter: makeBatchDeleter(),
 			},
 			args: args{
@@ -408,7 +408,7 @@ func TestShortenerGRPCServer_GetShortsForCurrentUser(t *testing.T) {
 							nil,
 						)
 				}),
-				urlGenerator: makeUrlGenerator(),
+				urlGenerator: makeURLGenerator(),
 				batchDeleter: makeBatchDeleter(),
 			},
 			args: args{
@@ -465,7 +465,7 @@ func TestShortenerGRPCServer_InternalStats(t *testing.T) {
 							UsersCount: 1,
 						}, nil)
 				}),
-				urlGenerator: makeUrlGenerator(),
+				urlGenerator: makeURLGenerator(),
 				batchDeleter: makeBatchDeleter(),
 			},
 			args: args{
@@ -481,7 +481,7 @@ func TestShortenerGRPCServer_InternalStats(t *testing.T) {
 					m.On("GetStats", mock.Anything, mock.Anything).
 						Return(nil, errors.New("failed"))
 				}),
-				urlGenerator: makeUrlGenerator(),
+				urlGenerator: makeURLGenerator(),
 				batchDeleter: makeBatchDeleter(),
 			},
 			args: args{
