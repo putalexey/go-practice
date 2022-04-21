@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+var _ BatchDeleter = &BatchDeleteService{}
 var deleteQueryTimeout = 30 * time.Second
 
 type DeleteTask struct {
@@ -14,8 +15,13 @@ type DeleteTask struct {
 	userID string
 }
 
-// BatchDeleter queues delete url requests and executes all of them in one request to storager
-type BatchDeleter struct {
+type BatchDeleter interface {
+	QueueItems(shorts []string, userID string)
+	Start()
+}
+
+// BatchDeleteService queues delete url requests and executes all of them in one request to storager
+type BatchDeleteService struct {
 	flushMutex *sync.Mutex
 	cond       *sync.Cond
 	store      Storager
@@ -26,10 +32,10 @@ type BatchDeleter struct {
 	stop       bool
 }
 
-func NewBatchDeleterWithContext(ctx context.Context, store Storager, bufferSize int) *BatchDeleter {
+func NewBatchDeleterWithContext(ctx context.Context, store Storager, bufferSize int) *BatchDeleteService {
 	//ctx, cancel := context.WithCancel(context.Background())
 	fm := &sync.Mutex{}
-	deleter := BatchDeleter{
+	deleter := BatchDeleteService{
 		store:      store,
 		flushMutex: fm,
 		cond:       sync.NewCond(fm),
@@ -44,7 +50,7 @@ func NewBatchDeleterWithContext(ctx context.Context, store Storager, bufferSize 
 }
 
 // QueueItems add shorts to the delete queue
-func (b *BatchDeleter) QueueItems(shorts []string, userID string) {
+func (b *BatchDeleteService) QueueItems(shorts []string, userID string) {
 	go func() {
 		log.Println("DEBUG: adding to queue", shorts)
 		b.inputChan <- DeleteTask{
@@ -59,7 +65,7 @@ func (b *BatchDeleter) QueueItems(shorts []string, userID string) {
 	}()
 }
 
-func (b *BatchDeleter) flushWorker() {
+func (b *BatchDeleteService) flushWorker() {
 	for {
 		tasksQueue := b.doWork()
 
@@ -94,7 +100,7 @@ func (b *BatchDeleter) flushWorker() {
 	}
 }
 
-func (b *BatchDeleter) doWork() (queue map[string]*DeleteTask) {
+func (b *BatchDeleteService) doWork() (queue map[string]*DeleteTask) {
 	b.flushMutex.Lock()
 	b.cond.Wait()
 	defer b.flushMutex.Unlock()
@@ -123,7 +129,7 @@ func (b *BatchDeleter) doWork() (queue map[string]*DeleteTask) {
 }
 
 // Start processing delete queue
-func (b *BatchDeleter) Start() {
+func (b *BatchDeleteService) Start() {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	go func() {

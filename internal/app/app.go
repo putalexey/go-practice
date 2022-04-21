@@ -3,6 +3,8 @@ package app
 
 import (
 	"context"
+	"github.com/putalexey/go-practicum/internal/app/shortener/grpc"
+	"github.com/putalexey/go-practicum/internal/app/urlgenerator"
 	"log"
 	"net/http"
 	"sync"
@@ -32,12 +34,21 @@ func Run(ctx context.Context, cfg config.EnvConfig) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	batchDeleter := storage.NewBatchDeleterWithContext(ctx, store, 5)
+	urlGenerator := &urlgenerator.SequenceGenerator{BaseURL: cfg.BaseURL}
 
-	router := shortener.NewRouter(ctx, cfg.BaseURL, store)
-	srv := http.Server{
+	router := shortener.NewRouter(
+		cfg.BaseURL,
+		store,
+		cfg.TrustedSubnet,
+		urlGenerator,
+		batchDeleter,
+	)
+	httpServer := http.Server{
 		Addr:    cfg.Address,
 		Handler: router,
 	}
+	grpcServer := grpc.NewGRPCShortener(ctx, store, urlGenerator, batchDeleter)
 
 	srvCtx, srvCancel := context.WithCancel(ctx)
 	wg := sync.WaitGroup{}
@@ -47,14 +58,26 @@ func Run(ctx context.Context, cfg config.EnvConfig) {
 		defer wg.Done()
 		var err error
 		if cfg.EnableHTTPS {
-			err = srv.ListenAndServeTLS(cfg.CertFile, cfg.CertKeyFile)
+			err = httpServer.ListenAndServeTLS(cfg.CertFile, cfg.CertKeyFile)
 		} else {
-			err = srv.ListenAndServe()
+			err = httpServer.ListenAndServe()
 		}
 		if err != nil {
 			log.Println(err)
 		}
 	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err := grpcServer.Serve()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		log.Println("GRPC server stopped.")
+	}()
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -68,7 +91,7 @@ func Run(ctx context.Context, cfg config.EnvConfig) {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := srv.Shutdown(shutdownCtx); err != nil {
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
 		log.Fatalf("Server forced to shutdown: %s", err)
 	}
 	wg.Wait()

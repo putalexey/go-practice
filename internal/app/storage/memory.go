@@ -87,3 +87,25 @@ func (s *MemoryStorage) DeleteBatch(ctx context.Context, shorts []string) error 
 func (s *MemoryStorage) Ping(_ context.Context) error {
 	return nil
 }
+
+func (s *MemoryStorage) GetStats(ctx context.Context) (*ServiceStats, error) {
+	stats := ServiceStats{
+		URLsCount:  s.countURLs(ctx),
+		UsersCount: s.countUsers(ctx),
+	}
+	return &stats, nil
+}
+
+func (s *MemoryStorage) countURLs(_ context.Context) int {
+	return len(s.records)
+}
+
+func (s *MemoryStorage) countUsers(_ context.Context) int {
+	usersID := make(map[string]bool)
+	for _, record := range s.records {
+		if _, ok := usersID[record.UserID]; !ok {
+			usersID[record.UserID] = true
+		}
+	}
+	return len(usersID)
+}

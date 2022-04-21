@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+option go_package = "github.com/putalexey/go-practicum/internal/app/proto";
+
+package grpc;
+
+message Short {
+  string short_url = 1;
+  string original_url = 2;
+  string user_id = 3;
+}
+
+message CreateShortRequest {
+  string user_id = 1;
+  string url = 2;
+}
+
+message CreateShortResponse {
+  enum Status {
+    Unknown = 0;
+    Created = 1;
+    Conflict = 2;
+  }
+  Status status = 1;
+  Short short = 2;
+}
+
+
+message CreateShortBatchRequest {
+  message CreateShortBatchItem {
+    string correlation_id = 1;
+    string original_url = 2;
+  }
+
+  string user_id = 1;
+  repeated CreateShortBatchItem shorts = 2;
+}
+
+message CreateShortBatchResponse {
+  message CreateShortBatchResponseItem {
+    string correlation_id = 1;
+    Short short = 2;
+  }
+
+  repeated CreateShortBatchResponseItem results = 1;
+}
+
+
+message DeleteShortBatchRequest {
+  string user_id = 1;
+  repeated string shorts = 2;
+}
+
+message DeleteShortBatchResponse {
+}
+
+
+message ListShortsRequest {
+  string user_id = 1;
+}
+
+message ListShortsResponse {
+  repeated Short shorts = 1;
+}
+
+message InternalStatsResponse {
+	int32 urls_count = 1;   // количество сокращённых URL в сервисе
+	int32 users_count = 2; // количество пользователей в сервисе
+}
+
+message Empty {}
+
+service Shortener {
+  rpc CreateShort(CreateShortRequest) returns (CreateShortResponse);
+  rpc CreateShortBatch(CreateShortBatchRequest) returns (CreateShortBatchResponse);
+  rpc GetShortsForCurrentUser(ListShortsRequest) returns (ListShortsResponse);
+  rpc DeleteUserShorts(DeleteShortBatchRequest) returns (DeleteShortBatchResponse);
+  rpc InternalStats(Empty) returns (InternalStatsResponse);
+}

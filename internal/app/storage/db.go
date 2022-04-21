@@ -12,6 +12,7 @@ import (
 
 	_ "github.com/jackc/pgx/stdlib"
 	"github.com/pressly/goose/v3"
+	"golang.org/x/sync/errgroup"
 )
 
 var _ Storager = &DBStorage{}
@@ -239,4 +240,54 @@ func prepareSQLPlaceholders(startIndex int, values []string) ([]string, []interf
 	}
 
 	return shortsPlaceholderList, args
+}
+
+func (s *DBStorage) GetStats(ctx context.Context) (*ServiceStats, error) {
+	var stats ServiceStats
+	eg := errgroup.Group{}
+	eg.Go(func() error {
+		cnt, err := s.countURLs(ctx)
+		if err != nil {
+			return err
+		}
+		stats.URLsCount = cnt
+		return nil
+	})
+	eg.Go(func() error {
+		cnt, err := s.countUsers(ctx)
+		if err != nil {
+			return err
+		}
+		stats.UsersCount = cnt
+		return nil
+	})
+
+	if err := eg.Wait(); err != nil {
+		return nil, err
+	}
+	return &stats, nil
+}
+
+func (s *DBStorage) countURLs(ctx context.Context) (int, error) {
+	countURLs := 0
+	selectSQL := fmt.Sprintf("SELECT count(*) as cnt FROM %s WHERE deleted = FALSE", recordsTableName)
+	row := s.db.QueryRowContext(ctx, selectSQL)
+	err := row.Scan(&countURLs)
+	if err != nil {
+		return 0, err
+	}
+
+	return countURLs, nil
+}
+
+func (s *DBStorage) countUsers(ctx context.Context) (int, error) {
+	countUsers := 0
+	selectSQL := fmt.Sprintf("SELECT count(distinct user_id) as cnt FROM %s WHERE deleted = FALSE", recordsTableName)
+	row := s.db.QueryRowContext(ctx, selectSQL)
+	err := row.Scan(&countUsers)
+	if err != nil {
+		return 0, err
+	}
+
+	return countUsers, nil
 }

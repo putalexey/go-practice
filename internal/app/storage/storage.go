@@ -13,6 +13,11 @@ type Record struct {
 	Deleted bool
 }
 
+type ServiceStats struct {
+	URLsCount  int `json:"urls"`
+	UsersCount int `json:"users"`
+}
+
 func NewRecord(full, userID string) (Record, error) {
 	recordID, err := uuid.NewUUID()
 	if err != nil {
@@ -38,4 +43,5 @@ type Storager interface {
 	Delete(ctx context.Context, short string) error
 	DeleteBatch(ctx context.Context, shorts []string) error
 	Ping(ctx context.Context) error
+	GetStats(ctx context.Context) (*ServiceStats, error)
 }

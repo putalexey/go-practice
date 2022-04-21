@@ -17,6 +17,7 @@ type EnvConfig struct {
 	EnableHTTPS     bool   `env:"ENABLE_HTTPS" json:"enable_https"`
 	CertFile        string `env:"CERT" json:"cert_file"`
 	CertKeyFile     string `env:"CERT_KEY" json:"cert_key_file"`
+	TrustedSubnet   string `env:"TRUSTED_SUBNET" json:"trusted_subnet"`
 }
 
 type ConfigFile struct {
@@ -82,6 +83,7 @@ func parseFlags() map[string]string {
 	enableHTTPSFlag := flag.Bool("s", false, "Включить HTTPS")
 	certFile := flag.String("crypto-key", "", "Путь к файлу сертификата")
 	certKeyFile := flag.String("k", "", "Путь к ключу сертификата")
+	trustedSubnet := flag.String("t", "", "Доверенная подсеть")
 	flag.Parse()
 
 	cfg := make(map[string]string)
@@ -112,6 +114,9 @@ func parseFlags() map[string]string {
 	if *certKeyFile != "" {
 		cfg["CertKeyFile"] = *certKeyFile
 	}
+	if *trustedSubnet != "" {
+		cfg["TrustedSubnet"] = *trustedSubnet
+	}
 	return cfg
 }
 
@@ -139,5 +144,8 @@ func applyArgsToConfig(config *EnvConfig, args map[string]string) {
 	}
 	if value, ok := args["CertKeyFile"]; ok {
 		config.CertKeyFile = value
+	}
+	if value, ok := args["TrustedSubnet"]; ok {
+		config.TrustedSubnet = value
 	}
 }
